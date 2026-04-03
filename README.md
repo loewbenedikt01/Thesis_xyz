@@ -36,55 +36,55 @@ Thesis_xyz
         random_forest.py            # Run individually
         xgboost.py                  # Run individually
     results                     # Folder    
-        analysis                # Folder
+        metrics                # Folder
             benchmark			        # Folder
-                returns_buy_hold        # CSV, log return per month of the portfolio
+                returns_buy_hold        # CSV, log return per day of the portfolio
             equal_weight			    # Folder
-                returns_monthly         # CSV, log return per month of the portfolio
-                returns_quarterly       # CSV, log return per month of the portfolio
-                returns_semi-annual     # CSV, log return per month of the portfolio
-                returns_annual          # CSV, log return per month of the portfolio
+                returns_monthly         # CSV, log return per day of the portfolio
+                returns_quarterly       # CSV, log return per day of the portfolio
+                returns_semi-annual     # CSV, log return per day of the portfolio
+                returns_annual          # CSV, log return per day of the portfolio
             hrp				            # Folder
-                returns_monthly         # CSV, log return per month of the portfolio
-                returns_quarterly       # CSV, log return per month of the portfolio
-                returns_semi-annual     # CSV, log return per month of the portfolio
-                returns_annual          # CSV, log return per month of the portfolio
+                returns_monthly         # CSV, log return per day of the portfolio
+                returns_quarterly       # CSV, log return per day of the portfolio
+                returns_semi-annual     # CSV, log return per day of the portfolio
+                returns_annual          # CSV, log return per day of the portfolio
             lstm				        # Folder
                 run_01                  # Folder, for each run, create a new one (10) in total
-                    returns_monthly         # CSV, log return per month of the portfolio
-                    returns_quarterly       # CSV, log return per month of the portfolio
-                    returns_semi-annual     # CSV, log return per month of the portfolio
-                    returns_annual          # CSV, log return per month of the portfolio
+                    returns_monthly         # CSV, log return per day of the portfolio
+                    returns_quarterly       # CSV, log return per day of the portfolio
+                    returns_semi-annual     # CSV, log return per day of the portfolio
+                    returns_annual          # CSV, log return per day of the portfolio
             market_cap			        # Folder
-                returns_monthly         # CSV, log return per month of the portfolio
-                returns_quarterly       # CSV, log return per month of the portfolio
-                returns_semi-annual     # CSV, log return per month of the portfolio
-                returns_annual          # CSV, log return per month of the portfolio
+                returns_monthly         # CSV, log return per day of the portfolio
+                returns_quarterly       # CSV, log return per day of the portfolio
+                returns_semi-annual     # CSV, log return per day of the portfolio
+                returns_annual          # CSV, log return per day of the portfolio
             markowitz_unconstrained	    # Folder
-                returns_monthly         # CSV, log return per month of the portfolio
-                returns_quarterly       # CSV, log return per month of the portfolio
-                returns_semi-annual     # CSV, log return per month of the portfolio
-                returns_annual          # CSV, log return per month of the portfolio
+                returns_monthly         # CSV, log return per day of the portfolio
+                returns_quarterly       # CSV, log return per day of the portfolio
+                returns_semi-annual     # CSV, log return per day of the portfolio
+                returns_annual          # CSV, log return per day of the portfolio
             markowitz			        # Folder
-                returns_monthly         # CSV, log return per month of the portfolio
-                returns_quarterly       # CSV, log return per month of the portfolio
-                returns_semi-annual     # CSV, log return per month of the portfolio
-                returns_annual          # CSV, log return per month of the portfolio
+                returns_monthly         # CSV, log return per day of the portfolio
+                returns_quarterly       # CSV, log return per day of the portfolio
+                returns_semi-annual     # CSV, log return per day of the portfolio
+                returns_annual          # CSV, log return per day of the portfolio
             random_forest		        # Folder
                 run_01                  # Folder, for each run, create a new one (10) in total
-                    returns_monthly         # CSV, log return per month of the portfolio
-                    returns_quarterly       # CSV, log return per month of the portfolio
-                    returns_semi-annual     # CSV, log return per month of the portfolio
-                    returns_annual          # CSV, log return per month of the portfolio
+                    returns_monthly         # CSV, log return per day of the portfolio
+                    returns_quarterly       # CSV, log return per day of the portfolio
+                    returns_semi-annual     # CSV, log return per day of the portfolio
+                    returns_annual          # CSV, log return per day of the portfolio
             xgboost			            # Folder
                 run_01                  # Folder, for each run, create a new one (10) in total
-                    returns_monthly         # CSV, log return per month of the portfolio
-                    returns_quarterly       # CSV, log return per month of the portfolio
-                    returns_semi-annual     # CSV, log return per month of the portfolio
-                    returns_annual          # CSV, log return per month of the portfolio
+                    returns_monthly         # CSV, log return per day of the portfolio
+                    returns_quarterly       # CSV, log return per day of the portfolio
+                    returns_semi-annual     # CSV, log return per day of the portfolio
+                    returns_annual          # CSV, log return per day of the portfolio
         data                     # Folder
             benchmark			        # Folder
-                portfolio               # CSV, columns (date[month end], ticker, price adj close, returns per month) [it is buy&hold]
+                portfolio               # CSV, columns (date[month end], ticker, price adj close, returns per day) [it is buy&hold]
             equal_weight			    # Folder
                 portfolio_monthly       # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
                 portfolio_quarterly     # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
