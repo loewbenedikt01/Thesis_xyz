@@ -1,0 +1,4 @@
+Downloaded: 2026-04-03 22:43:13.170370
+yfinance version: 0.2.66
+Tickers: ['C', 'G', 'P', 'S', '^']
+Start: 1998-01-01 | End: 2025-12-31

@@ -1,0 +1,4 @@
+Downloaded: 2026-04-03 22:43:12.882695
+yfinance version: 0.2.66
+Tickers: ['AAPL', 'AIG', 'AMGN', 'AMZN', 'AVGO', 'BAC', 'BMY', 'BRK-B', 'C', 'COST', 'CSCO', 'CVX', 'DIS', 'GE', 'GOOGL', 'HD', 'IBM', 'INTC', 'JNJ', 'JPM', 'KO', 'LLY', 'MA', 'META', 'MRK', 'MSFT', 'NVDA', 'ORCL', 'PEP', 'PFE', 'PG', 'PM', 'PYPL', 'QCOM', 'T', 'TSLA', 'UNH', 'UPS', 'V', 'VZ', 'WFC', 'WMT', 'XOM']
+Start: 1992-01-01 | End: 2025-12-31

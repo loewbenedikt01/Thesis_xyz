@@ -155,8 +155,9 @@ Thesis_xyz
             random_forest                   # Folder
             xgboost                         # Folder
     universe
-    benchmark_prices.parquet        # Benchmark with its closing prices over all years
+    benchmark_price.parquet        # Benchmark with its closing prices over all years
     universe_prices.parquet         # All stocks with all closing prices over all years
+    download_meta.txt
     .gitignore
     README.md                       # Documentation
     requirements.txt
