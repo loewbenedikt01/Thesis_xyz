@@ -4,7 +4,8 @@
 import pyarrow
 import pandas as pd
 import numpy as np
-import plotly
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
 from pathlib import Path
 from scipy import stats
@@ -277,6 +278,465 @@ def metrics_to_dataframe(results: dict) -> pd.DataFrame:
 # Create the Plots
 # --------
 
+def _find_drawdown_episodes(df, threshold):
+    """
+    Find drawdown episodes where dd breaches -threshold.
+    Groups by full underwater periods (dd < 0) so a single drawdown that
+    temporarily recovers above the threshold is still counted as ONE episode.
+    Returns list of dicts: peak_date, trough_date, recovery_date,
+    dd_pct, days_to_trough, days_to_recovery, recovered.
+    """
+    cum = df['cum_return']
+    dd  = df['drawdown']
+    episodes = []
+
+    is_underwater = dd < 0
+    if not is_underwater.any():
+        return episodes
+
+    group_ids = (is_underwater != is_underwater.shift()).cumsum()
+
+    for _, grp in df[is_underwater].groupby(group_ids[is_underwater]):
+        # Skip episodes that never breach the threshold
+        if grp['drawdown'].min() > -threshold:
+            continue
+        trough_date = grp['drawdown'].idxmin()
+        dd_pct      = dd.loc[trough_date]
+
+        group_start = grp.index[0]
+        peak_date   = cum.loc[:group_start].idxmax()
+        peak_val    = cum.loc[peak_date]
+
+        post        = cum.loc[trough_date:]
+        hits        = post[post >= peak_val]
+        if not hits.empty:
+            recovery_date = hits.index[0]
+            recovered     = True
+        else:
+            recovery_date = cum.index[-1]
+            recovered     = False
+
+        episodes.append({
+            'peak_date'        : peak_date,
+            'trough_date'      : trough_date,
+            'recovery_date'    : recovery_date,
+            'dd_pct'           : dd_pct,
+            'days_to_trough'   : (pd.Timestamp(trough_date)   - pd.Timestamp(peak_date)).days,
+            'days_to_recovery' : (pd.Timestamp(recovery_date) - pd.Timestamp(trough_date)).days,
+            'recovered'        : recovered,
+        })
+
+    return episodes
+
+
+def _build_drawdown_table(episodes):
+    """
+    Build overall stats + quartile breakdown table data from drawdown episodes.
+    Returns (header_values, cell_values) ready for go.Table.
+    """
+    if not episodes:
+        return [], []
+
+    dds  = [abs(ep['dd_pct'])           for ep in episodes]
+    durs = [ep['days_to_trough']        for ep in episodes]
+    recs = [ep['days_to_recovery']      for ep in episodes]
+
+    n = len(episodes)
+
+    # Sort by severity (worst first) and split into quartiles
+    sorted_eps = sorted(episodes, key=lambda e: e['dd_pct'])   # most negative first
+    q_size     = max(1, n // 4)
+    quartiles  = [sorted_eps[i * q_size:(i + 1) * q_size] for i in range(4)]
+    # put any remainder into Q4
+    if len(sorted_eps) > 4 * q_size:
+        quartiles[3] += sorted_eps[4 * q_size:]
+
+    def stats(eps_list):
+        if not eps_list:
+            return "—", "—", "—", 0
+        d  = [abs(e['dd_pct'])      for e in eps_list]
+        du = [e['days_to_trough']   for e in eps_list]
+        re = [e['days_to_recovery'] for e in eps_list]
+        return (
+            f"{np.mean(d):.1%}",
+            f"{np.mean(du):.0f}d",
+            f"{np.mean(re):.0f}d",
+            len(eps_list),
+        )
+
+    rows = []
+    # Overall
+    rows.append(("All episodes", f"{n}", f"{np.mean(dds):.1%}", f"{np.mean(durs):.0f}d", f"{np.mean(recs):.0f}d"))
+    # Quartiles: Q1 = most severe
+    labels = ["Q1 — most severe (top 25%)", "Q2", "Q3", "Q4 — mildest (bottom 25%)"]
+    for label, q_eps in zip(labels, quartiles):
+        avg_dd, avg_dur, avg_rec, cnt = stats(q_eps)
+        rows.append((label, str(cnt), avg_dd, avg_dur, avg_rec))
+
+    headers = ["Quartile", "Count", "Avg DD %", "Avg Duration to Trough", "Avg Recovery Duration"]
+    cells   = list(zip(*rows))   # transpose
+    return headers, cells
+
+
+def generate_dynamic_benchmark_report(portfolio_df, output_path, threshold=0.05):
+    """Creates a white-themed HTML report: cumulative return + drawdown table, underwater, return distribution."""
+    df = portfolio_df.copy()
+    df.index = pd.to_datetime(df.index)
+    df['cum_return'] = (1 + df['returns_per_day']).cumprod()
+    df['drawdown']   = (df['cum_return'] / df['cum_return'].cummax()) - 1
+
+    episodes = _find_drawdown_episodes(df, threshold)
+    worst    = min(episodes, key=lambda e: e['dd_pct']) if episodes else None
+
+    # ── Colours ───────────────────────────────────────────────────────────────
+    BG        = "#FFFFFF"
+    PANEL     = "#F8F9FA"
+    GRID      = "#E9ECEF"
+    LINE_BLUE = "#1D6FA4"
+    RED       = "#DC2626"
+    GREEN     = "#16A34A"
+    TEXT      = "#1E293B"
+    SUBTEXT   = "#64748B"
+    TBL_HDR   = "#1D6FA4"
+    TBL_ROW_B = "#FFFFFF"
+    Q1_COLOR  = "#FEE2E2"   # lightest red
+    Q2_COLOR  = "#FEF9C3"
+    Q3_COLOR  = "#DCFCE7"
+    Q4_COLOR  = "#DBEAFE"   # lightest blue
+
+    # ── Layout: 4 rows (cum return, table, underwater, distribution) ───────────
+    # ── Prepare annual + monthly return data ──────────────────────────────────
+    df_annual  = df['returns_per_day'].resample('YE').apply(lambda r: (1 + r).prod() - 1)
+    df_annual.index = df_annual.index.year
+
+    monthly    = df['returns_per_day'].resample('ME').apply(lambda r: (1 + r).prod() - 1)
+    monthly_df = monthly.to_frame('ret')
+    monthly_df['year']  = monthly_df.index.year
+    monthly_df['month'] = monthly_df.index.month
+    heat_pivot = monthly_df.pivot(index='year', columns='month', values='ret')
+    month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    heat_pivot.columns = [month_names[m - 1] for m in heat_pivot.columns]
+    heat_z     = heat_pivot.values
+    heat_years = [str(y) for y in heat_pivot.index]
+
+    fig = make_subplots(
+        rows=6, cols=1,
+        shared_xaxes=False,
+        vertical_spacing=0.05,
+        row_heights=[0.28, 0.12, 0.14, 0.16, 0.14, 0.32],
+        subplot_titles=[
+            f"Cumulative Return  —  drawdown episodes > {threshold:.0%} highlighted",
+            f"Drawdown Episode Summary (threshold {threshold:.0%})",
+            "Underwater Plot (Drawdown %)",
+            "Daily Return Distribution",
+            "Annual Returns",
+            "Monthly Returns Heatmap",
+        ],
+        specs=[
+            [{"type": "xy"}],
+            [{"type": "table"}],
+            [{"type": "xy"}],
+            [{"type": "xy"}],
+            [{"type": "xy"}],
+            [{"type": "xy"}],
+        ],
+    )
+
+    # ── Chart 1: Cumulative Return ─────────────────────────────────────────────
+    fig.add_trace(
+        go.Scatter(
+            x=df.index, y=df['cum_return'],
+            mode='lines',
+            line=dict(color=LINE_BLUE, width=2),
+            name="Cum. Return",
+            hovertemplate="%{x|%b %d, %Y}<br>Cum. Return: %{y:.1%}<extra></extra>",
+        ),
+        row=1, col=1,
+    )
+
+    for ep in episodes:
+        is_worst    = worst is not None and ep['trough_date'] == worst['trough_date']
+        red_alpha   = 0.25 if is_worst else 0.12
+        green_alpha = 0.20 if is_worst else 0.10
+
+        fig.add_vrect(
+            x0=ep['peak_date'], x1=ep['trough_date'],
+            fillcolor=RED, opacity=red_alpha,
+            layer="below", line_width=0,
+            row=1, col=1,
+        )
+        fig.add_vrect(
+            x0=ep['trough_date'], x1=ep['recovery_date'],
+            fillcolor=GREEN, opacity=green_alpha,
+            layer="below", line_width=0,
+            row=1, col=1,
+        )
+
+        rec_label = f"↑ {ep['days_to_recovery']}d" if ep['recovered'] else "↑ n/a"
+        prefix    = "<b>★ Worst</b><br>" if is_worst else ""
+        ay_offset = -70 if is_worst else -48
+        ann_color  = "#991B1B" if is_worst else RED
+
+        fig.add_annotation(
+            x=ep['trough_date'],
+            y=df.loc[ep['trough_date'], 'cum_return'],
+            xref="x", yref="y",
+            text=(
+                f"{prefix}"
+                f"<b>{ep['dd_pct']:.1%}</b><br>"
+                f"↓ {ep['days_to_trough']}d  {rec_label}"
+            ),
+            showarrow=True,
+            arrowhead=2,
+            arrowcolor=ann_color,
+            arrowwidth=1.2,
+            arrowsize=0.9,
+            bgcolor="rgba(255,255,255,0.92)",
+            bordercolor=ann_color,
+            borderwidth=1,
+            font=dict(size=9, color=TEXT),
+            ax=0, ay=ay_offset,
+            row=1, col=1,
+        )
+
+    fig.update_yaxes(
+        tickformat=".0%", title_text="Cumulative Return",
+        gridcolor=GRID, zerolinecolor=GRID,
+        title_font=dict(color=SUBTEXT), tickfont=dict(color=SUBTEXT),
+        row=1, col=1,
+    )
+    fig.update_xaxes(
+        dtick="M12", tickformat="%Y", tickangle=0,
+        showgrid=False, tickfont=dict(color=SUBTEXT),
+        row=1, col=1,
+    )
+
+    # ── Table: Drawdown Summary ────────────────────────────────────────────────
+    headers, cells = _build_drawdown_table(episodes)
+    if headers:
+        row_colors = [TBL_ROW_B, Q1_COLOR, Q2_COLOR, Q3_COLOR, Q4_COLOR]
+        fill_colors = [[row_colors[r] for r in range(len(cells[0]))] for _ in cells]
+
+        fig.add_trace(
+            go.Table(
+                header=dict(
+                    values=[f"<b>{h}</b>" for h in headers],
+                    fill_color=TBL_HDR,
+                    font=dict(color="white", size=12, family="Inter, Arial"),
+                    align="left",
+                    height=30,
+                    line_color="white",
+                ),
+                cells=dict(
+                    values=cells,
+                    fill_color=fill_colors,
+                    font=dict(color=TEXT, size=11, family="Inter, Arial"),
+                    align="left",
+                    height=26,
+                    line_color=GRID,
+                ),
+            ),
+            row=2, col=1,
+        )
+
+    # ── Chart 3: Underwater ────────────────────────────────────────────────────
+    fig.add_trace(
+        go.Scatter(
+            x=df.index, y=df['drawdown'],
+            fill='tozeroy',
+            mode='lines',
+            line=dict(color=RED, width=1),
+            fillcolor='rgba(220,38,38,0.20)',
+            name="Drawdown",
+            hovertemplate="%{x|%b %d, %Y}<br>Drawdown: %{y:.2%}<extra></extra>",
+        ),
+        row=3, col=1,
+    )
+    fig.add_shape(
+        type="line",
+        x0=0, x1=1, xref="x2 domain",
+        y0=-threshold, y1=-threshold, yref="y2",
+        line=dict(dash="dash", color=SUBTEXT, width=1),
+    )
+    fig.add_annotation(
+        x=1, xref="x2 domain",
+        y=-threshold, yref="y2",
+        text=f"{threshold:.0%} threshold",
+        showarrow=False, xanchor="right", yanchor="top",
+        font=dict(color=SUBTEXT, size=10),
+    )
+    fig.update_yaxes(
+        tickformat=".0%", title_text="Drawdown",
+        gridcolor=GRID, zerolinecolor=GRID,
+        title_font=dict(color=SUBTEXT), tickfont=dict(color=SUBTEXT),
+        row=3, col=1,
+    )
+    fig.update_xaxes(
+        dtick="M12", tickformat="%Y", tickangle=0,
+        showgrid=False, tickfont=dict(color=SUBTEXT),
+        row=3, col=1,
+    )
+
+    # ── Chart 4: Return Distribution ──────────────────────────────────────────
+    ret_vals = df['returns_per_day'].dropna()
+    neg_vals = ret_vals[ret_vals <  0]
+    pos_vals = ret_vals[ret_vals >= 0]
+    bin_size = 0.001
+
+    fig.add_trace(
+        go.Histogram(
+            x=neg_vals, name="Negative",
+            xbins=dict(size=bin_size),
+            marker_color='rgba(220,38,38,0.70)',
+            hovertemplate="Return: %{x:.2%}<br>Count: %{y}<extra></extra>",
+        ),
+        row=4, col=1,
+    )
+    fig.add_trace(
+        go.Histogram(
+            x=pos_vals, name="Positive",
+            xbins=dict(size=bin_size),
+            marker_color='rgba(22,163,74,0.70)',
+            hovertemplate="Return: %{x:.2%}<br>Count: %{y}<extra></extra>",
+        ),
+        row=4, col=1,
+    )
+    fig.add_shape(
+        type="line",
+        x0=0, x1=0, xref="x3",
+        y0=0, y1=1, yref="y3 domain",
+        line=dict(dash="dot", color=TEXT, width=1),
+    )
+    mean_ret = float(ret_vals.mean())
+    fig.add_shape(
+        type="line",
+        x0=mean_ret, x1=mean_ret, xref="x3",
+        y0=0, y1=1, yref="y3 domain",
+        line=dict(dash="dash", color="#D97706", width=1.2),
+    )
+    fig.add_annotation(
+        x=mean_ret, xref="x3",
+        y=1, yref="y3 domain",
+        text=f"mean {mean_ret:.3%}",
+        showarrow=False, xanchor="left", yanchor="top",
+        font=dict(color="#D97706", size=10),
+    )
+    fig.update_xaxes(
+        tickformat=".1%", title_text="Daily Return",
+        gridcolor=GRID, tickfont=dict(color=SUBTEXT),
+        title_font=dict(color=SUBTEXT),
+        row=4, col=1,
+    )
+    fig.update_yaxes(
+        title_text="Count", gridcolor=GRID,
+        title_font=dict(color=SUBTEXT), tickfont=dict(color=SUBTEXT),
+        row=4, col=1,
+    )
+
+    # ── Chart 5: Annual Returns Bar ───────────────────────────────────────────
+    bar_colors = [GREEN if v >= 0 else RED for v in df_annual.values]
+    fig.add_trace(
+        go.Bar(
+            x=[str(y) for y in df_annual.index],
+            y=df_annual.values,
+            marker_color=bar_colors,
+            text=[f"{v:.1%}" for v in df_annual.values],
+            textposition='outside',
+            textfont=dict(size=9, color=TEXT),
+            hovertemplate="Year: %{x}<br>Return: %{y:.2%}<extra></extra>",
+            name="Annual Return",
+        ),
+        row=5, col=1,
+    )
+    fig.add_shape(
+        type="line",
+        x0=0, x1=1, xref="x4 domain",
+        y0=0, y1=0, yref="y4",
+        line=dict(color=SUBTEXT, width=1),
+    )
+    fig.update_yaxes(
+        tickformat=".0%", title_text="Return",
+        gridcolor=GRID, zerolinecolor=GRID,
+        title_font=dict(color=SUBTEXT), tickfont=dict(color=SUBTEXT),
+        row=5, col=1,
+    )
+    fig.update_xaxes(
+        tickfont=dict(color=SUBTEXT), showgrid=False,
+        tickangle=-45, row=5, col=1,
+    )
+
+    # ── Chart 6: Monthly Heatmap ──────────────────────────────────────────────
+    abs_max = float(np.nanmax(np.abs(heat_z)))
+    fig.add_trace(
+        go.Heatmap(
+            z=heat_z,
+            x=month_names,
+            y=heat_years,
+            colorscale=[
+                [0.0,  "#DC2626"],
+                [0.5,  "#FFFFFF"],
+                [1.0,  "#16A34A"],
+            ],
+            zmid=0,
+            zmin=-abs_max,
+            zmax=abs_max,
+            text=[[f"{v:.1%}" if not np.isnan(v) else "" for v in row] for row in heat_z],
+            texttemplate="%{text}",
+            textfont=dict(size=9, color=TEXT),
+            hovertemplate="Month: %{x}<br>Year: %{y}<br>Return: %{z:.2%}<extra></extra>",
+            showscale=True,
+            colorbar=dict(
+                tickformat=".0%",
+                thickness=12,
+                len=0.16,
+                y=0.05,
+                title=dict(text="Return", font=dict(size=10, color=SUBTEXT)),
+                tickfont=dict(size=9, color=SUBTEXT),
+            ),
+        ),
+        row=6, col=1,
+    )
+    fig.update_yaxes(
+        title_text="Year", autorange="reversed",
+        title_font=dict(color=SUBTEXT), tickfont=dict(color=SUBTEXT, size=10),
+        row=6, col=1,
+    )
+    fig.update_xaxes(
+        tickfont=dict(color=SUBTEXT), showgrid=False,
+        side="bottom", row=6, col=1,
+    )
+
+    # ── Subplot title style ────────────────────────────────────────────────────
+    for ann in fig['layout']['annotations']:
+        if not ann.showarrow:
+            ann['font'] = dict(color=TEXT, size=13, family="Inter, Arial")
+
+    # ── Global layout ──────────────────────────────────────────────────────────
+    fig.update_layout(
+        height=2500,
+        barmode='overlay',
+        title=dict(
+            text="S&P 500  ·  Buy & Hold Performance Analysis",
+            font=dict(size=20, color=TEXT, family="Inter, Arial"),
+            x=0.5, xanchor='center', y=0.99,
+        ),
+        paper_bgcolor=BG,
+        plot_bgcolor=PANEL,
+        font=dict(family="Inter, Arial, sans-serif", size=12, color=TEXT),
+        showlegend=False,
+        margin=dict(l=70, r=50, t=80, b=50),
+        hoverlabel=dict(
+            bgcolor="white",
+            font_size=12,
+            font_color=TEXT,
+            bordercolor=GRID,
+        ),
+    )
+    fig.update_xaxes(linecolor=GRID, mirror=False)
+    fig.update_yaxes(linecolor=GRID, mirror=False)
+
+    fig.write_html(output_path, include_plotlyjs='cdn')
+    print(f"HTML report saved to {output_path}")
 
 
 # ------
@@ -296,6 +756,12 @@ results = compute_all_metrics(
 
 df_metrics = metrics_to_dataframe(results)
 df_metrics.to_csv(metrics_file, index=False)
+
+# Change 0.05 to 0.10 for 10%, etc.
+threshold_val = 0.05            # Drawdown highlighting
+report_path = output_dir_plots / "benchmark_interactive_report.html"
+generate_dynamic_benchmark_report(portfolio, report_path, threshold=threshold_val)
+
 print(f"Metrics exported to: {metrics_file}")
 
 
