@@ -1,0 +1,19 @@
+Category,Metric,Value
+Returns,Cumulative Return,607.28%
+Returns,Annualized Return,7.25%
+Benchmark,Benchmark Cumulative Return,607.28%
+Benchmark,Benchmark Annualized Return,7.25%
+Risk,Annualized Volatility,19.38%
+Risk,Maximum Drawdown,-56.78%
+Risk,DD Duration (periods),1802
+Risk,Recovery Duration (periods),1021
+Risk,Value at Risk (95%),-1.87%
+Risk,CVaR / Expected Shortfall,-2.96%
+Ratios,Sharpe Ratio,0.374
+Ratios,Sortino Ratio,0.353
+Ratios,Calmar Ratio,0.128
+Ratios,Omega Ratio,1.071
+Crisis,Phase 1 Max Drawdown,-56.78%
+Crisis,Phase 1 Duration,356
+Crisis,Phase 2 Recovery Time,1022
+Crisis,Phase 2 Avg Daily Return,0.0546%
