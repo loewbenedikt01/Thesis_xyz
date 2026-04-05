@@ -73,7 +73,7 @@ for label, offset in FREQUENCIES.items():
         valid_tickers = coverage[coverage >= MIN_COMPLETENESS].index.tolist()
 
         try:
-            lb_prices_final = lb_data[valid_tickers].dropna(axis=1)
+            lb_prices_final = lb_data[valid_tickers].ffill().dropna(axis=1)
             mu = expected_returns.mean_historical_return(lb_prices_final)
             S = risk_models.sample_cov(lb_prices_final)
             
@@ -105,12 +105,14 @@ for label, offset in FREQUENCIES.items():
             continue
 
         # 3. Daily Performance Calculation (The drift period)
-        period_prices = all_prices.loc[current_date:next_rebalance - pd.Timedelta(days=1), active_weights.index]
+        # Fetch 5 extra days before current_date so pct_change() has a reference row (handles weekends/holidays)
+        period_prices = all_prices.loc[current_date - pd.Timedelta(days=5):next_rebalance - pd.Timedelta(days=1), active_weights.index]
         if period_prices.empty:
             current_date = next_rebalance
             continue
 
-        daily_stock_rets = period_prices.pct_change().fillna(0)
+        daily_stock_rets = period_prices.pct_change().dropna(how='all')
+        daily_stock_rets = daily_stock_rets[daily_stock_rets.index >= current_date]
 
         for day_timestamp, returns in daily_stock_rets.iterrows():
             day_pct_return = (active_weights * returns).sum()

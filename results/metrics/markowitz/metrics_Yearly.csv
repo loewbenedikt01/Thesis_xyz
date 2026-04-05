@@ -1,0 +1,50 @@
+Category,Metric,Value
+Returns,Cumulative Return,999.66%
+Returns,Annualized Return,8.96%
+Benchmark,Benchmark Cumulative Return,607.28%
+Benchmark,Benchmark Annualized Return,7.25%
+Risk,Annualized Volatility,19.16%
+Risk,Maximum Drawdown,-54.72%
+Risk,DD Duration (periods),2842
+Risk,Recovery Duration (periods),2264
+Risk,Value at Risk (95%),-1.90%
+Risk,CVaR / Expected Shortfall,-2.89%
+Ratios,Sharpe Ratio,0.468
+Ratios,Sortino Ratio,0.660
+Ratios,Calmar Ratio,0.164
+Ratios,Omega Ratio,1.087
+Benchmark,Beta,0.920
+Benchmark,Alpha (Annualized),2.29%
+Benchmark,Information Ratio,0.219
+Dotcom Crash,Max Drawdown (%),-54.72%
+Dotcom Crash,Days: Peak → Trough,846
+Dotcom Crash,Days: Trough → Breakeven,3283
+Dotcom Crash,Days: Peak → Breakeven (Total),4129
+Dotcom Crash,Volatility — Decline Phase,23.57%
+Dotcom Crash,Volatility — Recovery Phase,18.95%
+Dotcom Crash,Avg Daily Return — Decline,-0.1348%
+Dotcom Crash,Avg Daily Return — Recovery,0.0337%
+GFC,Max Drawdown (%),-45.82%
+GFC,Days: Peak → Trough,3267
+GFC,Days: Trough → Breakeven,862
+GFC,Days: Peak → Breakeven (Total),4129
+GFC,Volatility — Decline Phase,21.03%
+GFC,Volatility — Recovery Phase,15.41%
+GFC,Avg Daily Return — Decline,-0.0268%
+GFC,Avg Daily Return — Recovery,0.0986%
+COVID-19,Max Drawdown (%),-29.75%
+COVID-19,Days: Peak → Trough,33
+COVID-19,Days: Trough → Breakeven,133
+COVID-19,Days: Peak → Breakeven (Total),166
+COVID-19,Volatility — Decline Phase,77.99%
+COVID-19,Volatility — Recovery Phase,30.99%
+COVID-19,Avg Daily Return — Decline,-1.4443%
+COVID-19,Avg Daily Return — Recovery,0.3517%
+2022 Inflation/War,Max Drawdown (%),-34.98%
+2022 Inflation/War,Days: Peak → Trough,431
+2022 Inflation/War,Days: Trough → Breakeven,465
+2022 Inflation/War,Days: Peak → Breakeven (Total),896
+2022 Inflation/War,Volatility — Decline Phase,25.87%
+2022 Inflation/War,Volatility — Recovery Phase,10.80%
+2022 Inflation/War,Avg Daily Return — Decline,-0.1391%
+2022 Inflation/War,Avg Daily Return — Recovery,0.1352%
