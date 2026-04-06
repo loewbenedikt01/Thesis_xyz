@@ -24,12 +24,34 @@ output_dir_plots.mkdir(parents=True, exist_ok=True)
 
 data_file = output_dir_data / "portfolio.csv"
 metrics_file = output_dir_metrics / "metrics_buy_hold.csv"
-# plots_file = output_dir_plots / 
 
 # Date Range
 start_date = "1998-01-01"
 end_date = "2025-12-31"
 ticker = "^GSPC"
+
+# (label, short_key, start_date, trough_date, end_date)
+# Dates are S&P 500 defined crisis windows
+CRISIS_PERIODS = [
+    ('Dotcom Crash',       'dotcom',  '2000-03-23', '2002-10-09', '2007-05-31'),
+    ('GFC',                'gfc',     '2007-10-09', '2009-03-09', '2013-03-28'),
+    ('Monetary Policy',    'mon_pol', '2018-09-21', '2018-12-24', '2019-04-23'),
+    ('COVID-19',           'covid19', '2020-02-19', '2020-03-23', '2020-08-12'),
+    ('Russia/Ukraine',     'russia',  '2022-01-03', '2022-10-12', '2024-01-19'),
+    ('Trade Policy Shock', 'trade',   '2025-02-19', '2025-04-08', '2025-06-26'),
+]
+
+CRISIS_METRIC_LABELS = [
+    ('max_drawdown',          'Max Drawdown (%)',               '{:.2%}'),
+    ('days_to_trough',        'Days: Peak → Trough',           '{:.0f}'),
+    ('days_trough_to_recovery','Days: Trough → Breakeven',     '{:.0f}'),
+    ('days_peak_to_breakeven','Days: Peak → Breakeven (Total)','{:.0f}'),
+    ('crisis_cum_return',     'Cumulative Return (Crisis)',     '{:.2%}'),
+    ('crisis_ann_return',     'Annualized Return (Crisis)',     '{:.2%}'),
+    ('crisis_ann_volatility', 'Annualized Volatility (Crisis)', '{:.2%}'),
+    ('crisis_sharpe',         'Sharpe Ratio (Crisis)',          '{:.3f}'),
+    ('crisis_sortino',        'Sortino Ratio (Crisis)',         '{:.3f}'),
+]
 
 print(f"Loading data from {benchmark_price_file}...")
 
@@ -177,40 +199,53 @@ def omega_ratio(log_returns_per_day: pd.Series, threshold: float = 0.0) -> float
     losses = abs(log_returns_per_day[log_returns_per_day < threshold].sum())
     return gains / losses if losses != 0 else np.inf
 
-def _benchmark_breakeven(price_series: pd.Series) -> float:
-    """Helper: compute time to breakeven after max drawdown using Price."""
-    rolling_max = price_series.cummax()
-    dd_series = (price_series / rolling_max) - 1
-    trough_idx = dd_series.idxmin()
-    peak_value = price_series.loc[:trough_idx].max()
-    post_trough = price_series.loc[trough_idx:]
-    recovered = post_trough[post_trough >= peak_value]
-    if recovered.empty:
-        return np.nan
-    return len(price_series.loc[trough_idx:recovered.index[0]])
+def named_crisis_metrics(log_returns: pd.Series, price_series: pd.Series, freq: str = 'D') -> dict:
+    """Compute peak→trough→recovery + full-window metrics for each crisis in CRISIS_PERIODS."""
+    results = {}
+    full_dd = (price_series / price_series.cummax()) - 1
 
-def crisis_metrics(log_returns_per_day: pd.Series, price_series: pd.Series, risk_free_rate, freq: str = 'D') -> dict:
-    """Compute crisis-specific metrics"""
-    rolling_max = price_series.cummax()
-    dd_series = (price_series / rolling_max) - 1
-    trough_idx = dd_series.idxmin()
-    peak_idx = price_series.loc[:trough_idx].idxmax()
-    phase1_log_ret = log_returns_per_day.loc[peak_idx:trough_idx]
-    phase2_log_ret = log_returns_per_day.loc[trough_idx:]
-    phase1_price = price_series.loc[peak_idx:trough_idx]
-    phase2_price = price_series.loc[trough_idx:]
-    time_to_breakeven = _benchmark_breakeven(price_series)
-    return_speed = phase2_log_ret.mean() if len(phase2_log_ret) > 0 else np.nan
-    return {
-        'phase1_max_drawdown'        : maximum_drawdown(phase1_price),
-        'phase1_duration_to_trough'  : len(phase1_price),
-        'phase1_sharpe'              : sharpe_ratio(phase1_log_ret, risk_free_rate, freq) if len(phase1_log_ret) > 1 else np.nan,
-        'phase1_sortino'             : sortino_ratio(phase1_log_ret, risk_free_rate, freq) if len(phase1_log_ret) > 1 else np.nan,
-        'phase2_time_to_breakeven'   : time_to_breakeven,
-        'phase2_return_speed'        : return_speed,
-        'phase2_calmar'              : calmar_ratio(phase2_log_ret, phase2_price, freq) if len(phase2_log_ret) > 1 else np.nan,
-        'phase2_volatility'          : annualized_volatility(phase2_log_ret, freq) if len(phase2_log_ret) > 1 else np.nan,
-    }
+    for _, crisis_key, window_start, _, window_end in CRISIS_PERIODS:
+        window_dd = full_dd.loc[window_start:window_end]
+        if window_dd.empty:
+            continue
+
+        trough_date = window_dd.idxmin()
+        trough_val  = price_series.loc[trough_date]
+        peak_date   = price_series.loc[:trough_date].idxmax()
+        peak_val    = price_series.loc[peak_date]
+
+        max_dd         = (trough_val / peak_val) - 1
+        days_to_trough = (pd.Timestamp(trough_date) - pd.Timestamp(peak_date)).days
+
+        post_trough    = price_series.loc[trough_date:]
+        recovered_hits = post_trough[post_trough >= peak_val]
+        if not recovered_hits.empty:
+            recovery_date           = recovered_hits.index[0]
+            days_trough_to_recovery = (pd.Timestamp(recovery_date) - pd.Timestamp(trough_date)).days
+            days_peak_to_breakeven  = (pd.Timestamp(recovery_date) - pd.Timestamp(peak_date)).days
+        else:
+            days_trough_to_recovery = np.nan
+            days_peak_to_breakeven  = np.nan
+
+        crisis_ret = log_returns.loc[window_start:window_end]
+
+        def _crisis_sortino(lr):
+            ann_ret = annualized_return(lr, freq)
+            ds_vol  = np.sqrt((np.minimum(lr, 0) ** 2).mean()) * np.sqrt(_annualized_factor(freq))
+            return ann_ret / ds_vol if ds_vol != 0 else np.nan
+
+        k = crisis_key
+        results[f'{k}_max_drawdown']            = max_dd
+        results[f'{k}_days_to_trough']          = days_to_trough
+        results[f'{k}_days_trough_to_recovery'] = days_trough_to_recovery
+        results[f'{k}_days_peak_to_breakeven']  = days_peak_to_breakeven
+        results[f'{k}_crisis_cum_return']       = cumulative_return(crisis_ret)        if len(crisis_ret) > 0 else np.nan
+        results[f'{k}_crisis_ann_return']       = annualized_return(crisis_ret, freq)  if len(crisis_ret) > 1 else np.nan
+        results[f'{k}_crisis_ann_volatility']   = annualized_volatility(crisis_ret, freq) if len(crisis_ret) > 1 else np.nan
+        results[f'{k}_crisis_sharpe']           = sharpe_ratio(crisis_ret, 0.0, freq)  if len(crisis_ret) > 1 else np.nan
+        results[f'{k}_crisis_sortino']          = _crisis_sortino(crisis_ret)          if len(crisis_ret) > 1 else np.nan
+
+    return results
 
 # Calculate the Metrics
 def compute_all_metrics(portfolio_log_returns: pd.Series, price_series: pd.Series, benchmark_log_returns: pd.Series, risk_free_rate, freq: str = 'D') -> dict:
@@ -231,7 +266,7 @@ def compute_all_metrics(portfolio_log_returns: pd.Series, price_series: pd.Serie
     results['sortino']                = sortino_ratio(log_ret, risk_free_rate, freq)
     results['calmar']                 = calmar_ratio(log_ret, price_series, freq)
     results['omega']                  = omega_ratio(log_ret)
-    crisis_results = crisis_metrics(log_ret, price_series, risk_free_rate, freq)
+    crisis_results = named_crisis_metrics(log_ret, price_series, freq)
     results.update(crisis_results)
     return results
 
@@ -245,32 +280,35 @@ def metrics_to_dataframe(results: dict) -> pd.DataFrame:
         'benchmark_ann_return'       : ('Benchmark', 'Benchmark Annualized Return', '{:.2%}'),
         'annualized_volatility'      : ('Risk',      'Annualized Volatility',       '{:.2%}'),
         'maximum_drawdown'           : ('Risk',      'Maximum Drawdown',            '{:.2%}'),
-        'dd_duration_to_trough'      : ('Risk',      'DD Duration (periods)',       '{:.0f}'),
-        'recovery_duration'          : ('Risk',      'Recovery Duration (periods)', '{:.0f}'),
         'var_95'                     : ('Risk',      'Value at Risk (95%)',         '{:.2%}'),
         'cvar_95'                    : ('Risk',      'CVaR / Expected Shortfall',   '{:.2%}'),
         'sharpe'                     : ('Ratios',    'Sharpe Ratio',                '{:.3f}'),
         'sortino'                    : ('Ratios',    'Sortino Ratio',               '{:.3f}'),
         'calmar'                     : ('Ratios',    'Calmar Ratio',                '{:.3f}'),
         'omega'                      : ('Ratios',    'Omega Ratio',                 '{:.3f}'),
-        # Adding Crisis Labels
-        'phase1_max_drawdown'        : ('Crisis',    'Phase 1 Max Drawdown',        '{:.2%}'),
-        'phase1_duration_to_trough'  : ('Crisis',    'Phase 1 Duration',            '{:.0f}'),
-        'phase2_time_to_breakeven'   : ('Crisis',    'Phase 2 Recovery Time',       '{:.0f}'),
-        'phase2_return_speed'        : ('Crisis',    'Phase 2 Avg Daily Return',    '{:.4%}')
     }
-    
+
+    # Build crisis labels dynamically from CRISIS_PERIODS + CRISIS_METRIC_LABELS
+    crisis_labels = {}
+    for crisis_name, crisis_key, _, _, _ in CRISIS_PERIODS:
+        for metric_suffix, metric_label, fmt in CRISIS_METRIC_LABELS:
+            crisis_labels[f'{crisis_key}_{metric_suffix}'] = (crisis_name, metric_label, fmt)
+
+    def _fmt_value(value, fmt):
+        try:
+            return fmt.format(value) if not (isinstance(value, float) and np.isnan(value)) else 'N/A'
+        except Exception:
+            return str(value)
+
     rows = []
     for key, value in results.items():
         if key in labels:
             category, name, fmt = labels[key]
-            try:
-                # Handle NaNs and formatting
-                formatted = fmt.format(value) if not (isinstance(value, float) and np.isnan(value)) else 'N/A'
-            except:
-                formatted = str(value)
-            rows.append({'Category': category, 'Metric': name, 'Value': formatted})
-            
+            rows.append({'Category': category, 'Metric': name, 'Value': _fmt_value(value, fmt)})
+        elif key in crisis_labels:
+            category, name, fmt = crisis_labels[key]
+            rows.append({'Category': category, 'Metric': name, 'Value': _fmt_value(value, fmt)})
+
     return pd.DataFrame(rows)
 
 
@@ -388,6 +426,20 @@ def generate_dynamic_benchmark_report(portfolio_df, output_path, threshold=0.05)
     episodes = _find_drawdown_episodes(df, threshold)
     worst    = min(episodes, key=lambda e: e['dd_pct']) if episodes else None
 
+    # ── Named crisis episodes: use explicit S&P 500 dates directly ────────────
+    _named_eps = []
+    for _cname, _, _c_start, _c_trough, _c_end in CRISIS_PERIODS:
+        _idx = df.index
+        _pd  = _idx[_idx >= pd.Timestamp(_c_start)][0]   if any(_idx >= pd.Timestamp(_c_start))  else None
+        _td  = _idx[_idx >= pd.Timestamp(_c_trough)][0]  if any(_idx >= pd.Timestamp(_c_trough)) else None
+        _rd  = _idx[_idx >= pd.Timestamp(_c_end)][0]     if any(_idx >= pd.Timestamp(_c_end))    else _idx[-1]
+        if _pd is None or _td is None:
+            continue
+        _pv = df['cum_return'].loc[_pd]
+        _tv = df['cum_return'].loc[_td]
+        _named_eps.append({'name': _cname, 'peak_date': _pd, 'trough_date': _td,
+                           'recovery_date': _rd, 'dd_pct': (_tv / _pv) - 1})
+
     # ── Colours ───────────────────────────────────────────────────────────────
     BG        = "#FFFFFF"
     PANEL     = "#F8F9FA"
@@ -499,6 +551,31 @@ def generate_dynamic_benchmark_report(portfolio_df, output_path, threshold=0.05)
             row=1, col=1,
         )
 
+    # ── Named crisis highlights: stronger bands with black border ─────────────
+    _y_top = float(df['cum_return'].max())
+    for _ep in _named_eps:
+        fig.add_vrect(
+            x0=_ep['peak_date'], x1=_ep['trough_date'],
+            fillcolor='rgba(220,38,38,0.40)', opacity=1,
+            layer='below', line_width=1.5, line_color='black',
+            row=1, col=1,
+        )
+        fig.add_vrect(
+            x0=_ep['trough_date'], x1=_ep['recovery_date'],
+            fillcolor='rgba(22,163,74,0.28)', opacity=1,
+            layer='below', line_width=1.5, line_color='black',
+            row=1, col=1,
+        )
+        fig.add_annotation(
+            x=_ep['peak_date'], y=_y_top,
+            xref='x', yref='y',
+            text=f"<b>{_ep['name']}</b>",
+            showarrow=False, xanchor='left', yanchor='top',
+            font=dict(size=9, color='black', family='Inter, Arial'),
+            bgcolor='rgba(255,255,255,0.85)',
+            bordercolor='black', borderwidth=1,
+        )
+
     fig.update_yaxes(
         tickformat=".0%", title_text="Cumulative Return",
         gridcolor=GRID, zerolinecolor=GRID,
@@ -565,6 +642,25 @@ def generate_dynamic_benchmark_report(portfolio_df, output_path, threshold=0.05)
         showarrow=False, xanchor="right", yanchor="top",
         font=dict(color=SUBTEXT, size=10),
     )
+    # ── Named crisis bands on drawdown chart ──────────────────────────────────
+    for _ep in _named_eps:
+        fig.add_shape(
+            type='rect',
+            x0=_ep['peak_date'], x1=_ep['trough_date'],
+            y0=0, y1=1,
+            xref='x2', yref='y2 domain',
+            fillcolor='rgba(220,38,38,0.30)', opacity=1,
+            layer='below', line_width=1.5, line_color='black',
+        )
+        fig.add_shape(
+            type='rect',
+            x0=_ep['trough_date'], x1=_ep['recovery_date'],
+            y0=0, y1=1,
+            xref='x2', yref='y2 domain',
+            fillcolor='rgba(22,163,74,0.20)', opacity=1,
+            layer='below', line_width=1.5, line_color='black',
+        )
+
     fig.update_yaxes(
         tickformat=".0%", title_text="Drawdown",
         gridcolor=GRID, zerolinecolor=GRID,

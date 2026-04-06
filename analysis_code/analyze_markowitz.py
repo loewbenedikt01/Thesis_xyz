@@ -32,13 +32,15 @@ FREQUENCIES = {
     'Monthly': pd.DateOffset(months=1)
 }
 
-# (label, short_key, window_start, window_end)
-# window defines where to search for the trough; recovery is tracked across the full series
+# (label, short_key, start_date, trough_date, end_date)
+# Dates are S&P 500 (benchmark) defined crisis windows
 CRISIS_PERIODS = [
-    ('Dotcom Crash',        'dotcom',  '1999-01-01', '2003-12-31'),
-    ('GFC',                 'gfc',     '2007-01-01', '2011-12-31'),
-    ('COVID-19',            'covid19', '2020-01-01', '2020-12-31'),
-    ('2022 Inflation/War',  'inf_war', '2022-01-01', '2023-12-31'),
+    ('Dotcom Crash',       'dotcom',  '2000-03-23', '2002-10-09', '2007-05-31'),
+    ('GFC',                'gfc',     '2007-10-09', '2009-03-09', '2013-03-28'),
+    ('Monetary Policy',    'mon_pol', '2018-09-21', '2018-12-24', '2019-04-23'),
+    ('COVID-19',           'covid19', '2020-02-19', '2020-03-23', '2020-08-12'),
+    ('Russia/Ukraine',     'russia',  '2022-01-03', '2022-10-12', '2024-01-19'),
+    ('Trade Policy Shock', 'trade',   '2025-02-19', '2025-04-08', '2025-06-26'),
 ]
 
 CRISIS_METRIC_LABELS = [
@@ -46,10 +48,11 @@ CRISIS_METRIC_LABELS = [
     ('days_to_trough',          'Days: Peak → Trough',           '{:.0f}'),
     ('days_trough_to_recovery', 'Days: Trough → Breakeven',      '{:.0f}'),
     ('days_peak_to_breakeven',  'Days: Peak → Breakeven (Total)','{:.0f}'),
-    ('phase1_volatility',       'Volatility — Decline Phase',    '{:.2%}'),
-    ('phase2_volatility',       'Volatility — Recovery Phase',   '{:.2%}'),
-    ('phase1_avg_return',       'Avg Daily Return — Decline',    '{:.4%}'),
-    ('phase2_avg_return',       'Avg Daily Return — Recovery',   '{:.4%}'),
+    ('crisis_cum_return',       'Cumulative Return (Crisis)',     '{:.2%}'),
+    ('crisis_ann_return',       'Annualized Return (Crisis)',     '{:.2%}'),
+    ('crisis_ann_volatility',   'Annualized Volatility (Crisis)', '{:.2%}'),
+    ('crisis_sharpe',           'Sharpe Ratio (Crisis)',          '{:.3f}'),
+    ('crisis_sortino',          'Sortino Ratio (Crisis)',         '{:.3f}'),
 ]
 
 
@@ -184,7 +187,7 @@ def named_crisis_metrics(log_returns: pd.Series, price_series: pd.Series, freq: 
     results = {}
     full_dd = (price_series / price_series.cummax()) - 1
 
-    for _, crisis_key, window_start, window_end in CRISIS_PERIODS:
+    for _, crisis_key, window_start, _, window_end in CRISIS_PERIODS:
         window_dd = full_dd.loc[window_start:window_end]
         if window_dd.empty:
             continue
@@ -212,19 +215,24 @@ def named_crisis_metrics(log_returns: pd.Series, price_series: pd.Series, freq: 
             days_peak_to_breakeven   = np.nan
             recovery_date            = price_series.index[-1]
 
-        # Phase returns
-        phase1_ret = log_returns.loc[peak_date:trough_date]
-        phase2_ret = log_returns.loc[trough_date:recovery_date]
+        # Full crisis window returns (start → end)
+        crisis_ret = log_returns.loc[window_start:window_end]
+
+        def _crisis_sortino(lr):
+            ann_ret = annualized_return(lr, freq)
+            ds_vol  = np.sqrt((np.minimum(lr, 0) ** 2).mean()) * np.sqrt(_annualized_factor(freq))
+            return ann_ret / ds_vol if ds_vol != 0 else np.nan
 
         k = crisis_key
         results[f'{k}_max_drawdown']            = max_dd
         results[f'{k}_days_to_trough']          = days_to_trough
         results[f'{k}_days_trough_to_recovery'] = days_trough_to_recovery
         results[f'{k}_days_peak_to_breakeven']  = days_peak_to_breakeven
-        results[f'{k}_phase1_volatility']       = annualized_volatility(phase1_ret, freq) if len(phase1_ret) > 1 else np.nan
-        results[f'{k}_phase2_volatility']       = annualized_volatility(phase2_ret, freq) if len(phase2_ret) > 1 else np.nan
-        results[f'{k}_phase1_avg_return']       = phase1_ret.mean() if len(phase1_ret) > 0 else np.nan
-        results[f'{k}_phase2_avg_return']       = phase2_ret.mean() if len(phase2_ret) > 0 else np.nan
+        results[f'{k}_crisis_cum_return']       = cumulative_return(crisis_ret)       if len(crisis_ret) > 0 else np.nan
+        results[f'{k}_crisis_ann_return']       = annualized_return(crisis_ret, freq) if len(crisis_ret) > 1 else np.nan
+        results[f'{k}_crisis_ann_volatility']   = annualized_volatility(crisis_ret, freq) if len(crisis_ret) > 1 else np.nan
+        results[f'{k}_crisis_sharpe']           = sharpe_ratio(crisis_ret, 0.0, freq) if len(crisis_ret) > 1 else np.nan
+        results[f'{k}_crisis_sortino']          = _crisis_sortino(crisis_ret)         if len(crisis_ret) > 1 else np.nan
 
     return results
 
@@ -294,8 +302,6 @@ def metrics_to_dataframe(results: dict) -> pd.DataFrame:
         'benchmark_ann_return'       : ('Benchmark', 'Benchmark Annualized Return', '{:.2%}'),
         'annualized_volatility'      : ('Risk',      'Annualized Volatility',       '{:.2%}'),
         'maximum_drawdown'           : ('Risk',      'Maximum Drawdown',            '{:.2%}'),
-        'dd_duration_to_trough'      : ('Risk',      'DD Duration (periods)',       '{:.0f}'),
-        'recovery_duration'          : ('Risk',      'Recovery Duration (periods)', '{:.0f}'),
         'var_95'                     : ('Risk',      'Value at Risk (95%)',         '{:.2%}'),
         'cvar_95'                    : ('Risk',      'CVaR / Expected Shortfall',   '{:.2%}'),
         'sharpe'                     : ('Ratios',    'Sharpe Ratio',                '{:.3f}'),
@@ -309,7 +315,7 @@ def metrics_to_dataframe(results: dict) -> pd.DataFrame:
 
     # Build crisis labels dynamically from CRISIS_PERIODS + CRISIS_METRIC_LABELS
     crisis_labels = {}
-    for crisis_name, crisis_key, _, _ in CRISIS_PERIODS:
+    for crisis_name, crisis_key, _, _, _ in CRISIS_PERIODS:
         for metric_suffix, metric_label, fmt in CRISIS_METRIC_LABELS:
             crisis_labels[f'{crisis_key}_{metric_suffix}'] = (crisis_name, metric_label, fmt)
 
@@ -440,27 +446,19 @@ def generate_dynamic_benchmark_report(portfolio_df, title="Portfolio Performance
     episodes = _find_drawdown_episodes(df, threshold)
     worst    = min(episodes, key=lambda e: e['dd_pct']) if episodes else None
 
-    # ── Named crisis episodes (recovery capped at next crisis's peak) ──────────
+    # ── Named crisis episodes: use explicit S&P 500 dates directly ────────────
     _named_eps = []
-    _fdd = (df['cum_return'] / df['cum_return'].cummax()) - 1
-    for _cname, _, _ws, _we in CRISIS_PERIODS:
-        _wdd = _fdd.loc[_ws:_we]
-        if _wdd.empty:
+    for _cname, _, _c_start, _c_trough, _c_end in CRISIS_PERIODS:
+        _idx = df.index
+        _pd  = _idx[_idx >= pd.Timestamp(_c_start)][0]   if any(_idx >= pd.Timestamp(_c_start))  else None
+        _td  = _idx[_idx >= pd.Timestamp(_c_trough)][0]  if any(_idx >= pd.Timestamp(_c_trough)) else None
+        _rd  = _idx[_idx >= pd.Timestamp(_c_end)][0]     if any(_idx >= pd.Timestamp(_c_end))    else _idx[-1]
+        if _pd is None or _td is None:
             continue
-        _td   = _wdd.idxmin()
-        _tv   = df['cum_return'].loc[_td]
-        _pd   = df['cum_return'].loc[:_td].idxmax()
-        _pv   = df['cum_return'].loc[_pd]
-        _post = df['cum_return'].loc[_td:]
-        _hits = _post[_post >= _pv]
-        _rd   = _hits.index[0] if not _hits.empty else df.index[-1]
+        _pv = df['cum_return'].loc[_pd]
+        _tv = df['cum_return'].loc[_td]
         _named_eps.append({'name': _cname, 'peak_date': _pd, 'trough_date': _td,
                            'recovery_date': _rd, 'dd_pct': (_tv / _pv) - 1})
-    # Cap each crisis's recovery at the next crisis's peak so bands don't overlap
-    for _i in range(len(_named_eps) - 1):
-        _next_peak = _named_eps[_i + 1]['peak_date']
-        if _named_eps[_i]['recovery_date'] > _next_peak:
-            _named_eps[_i]['recovery_date'] = _next_peak
 
     # ── Colours ───────────────────────────────────────────────────────────────
     BG        = "#FFFFFF"
@@ -855,6 +853,189 @@ def generate_dynamic_benchmark_report(portfolio_df, title="Portfolio Performance
 
     return fig.to_html(full_html=False, include_plotlyjs='cdn')
 
+
+def generate_crisis_comparison_charts(portfolio_df, benchmark_df, title_prefix="") -> str:
+    """For each crisis in CRISIS_PERIODS, produce a chart (portfolio vs benchmark,
+    normalized to 1.0 at crisis start) and a side-by-side metrics comparison table.
+    Returns combined HTML string."""
+
+    BG      = "#FFFFFF"
+    PANEL   = "#F8F9FA"
+    GRID    = "#E9ECEF"
+    TEXT    = "#1E293B"
+    SUBTEXT = "#64748B"
+    PORT_C  = "#1D6FA4"
+    BENCH_C = "#F97316"
+
+    bm_log   = benchmark_df['log_returns_per_day'].sort_index()
+    port_log = portfolio_df['log_return'].sort_index()
+
+    divs = []
+
+    def _safe_sortino(lr):
+        ann_ret = annualized_return(lr)
+        ds_vol  = np.sqrt((np.minimum(lr, 0) ** 2).mean()) * np.sqrt(TRADING_DAYS_PER_YEAR)
+        return ann_ret / ds_vol if ds_vol != 0 else np.nan
+
+    def _safe_calmar(lr):
+        price = np.exp(lr.cumsum())
+        mdd   = abs(maximum_drawdown(price))
+        return annualized_return(lr) / mdd if mdd != 0 else np.nan
+
+    for cname, _, c_start, _, c_end in CRISIS_PERIODS:
+        p_lr = port_log.loc[c_start:c_end].dropna()
+        b_lr = bm_log.loc[c_start:c_end].dropna()
+
+        if p_lr.empty or b_lr.empty:
+            divs.append(f'<p style="font-family:Inter,Arial;color:{SUBTEXT};margin:20px 70px">'
+                        f'{cname}: insufficient data in portfolio or benchmark.</p>')
+            continue
+
+        p_lr, b_lr = p_lr.align(b_lr, join='inner')
+        p_cum = np.exp(p_lr.cumsum())
+        b_cum = np.exp(b_lr.cumsum())
+
+        def _metrics(lr):
+            price = np.exp(lr.cumsum())
+            return {
+                'Cumulative Return'     : f"{cumulative_return(lr):.2%}",
+                'Annualized Return'     : f"{annualized_return(lr):.2%}",
+                'Annualized Volatility' : f"{annualized_volatility(lr):.2%}",
+                'Max Drawdown'          : f"{maximum_drawdown(price):.2%}",
+                'Sharpe Ratio'          : f"{sharpe_ratio(lr, 0.0):.3f}",
+                'Sortino Ratio'         : f"{_safe_sortino(lr):.3f}",
+                'Calmar Ratio'          : f"{_safe_calmar(lr):.3f}",
+                'VaR 95%'               : f"{value_at_risk(lr, 0.95):.2%}",
+                'CVaR 95%'              : f"{conditional_value_at_risk(lr, 0.95):.2%}",
+                'Omega Ratio'           : f"{omega_ratio(lr):.3f}",
+            }
+
+        p_m = _metrics(p_lr)
+        b_m = _metrics(b_lr)
+        metric_names = list(p_m.keys())
+
+        def _cell_color(name, pval_str, bval_str):
+            try:
+                pv = float(pval_str.replace('%', ''))
+                bv = float(bval_str.replace('%', ''))
+            except Exception:
+                return TEXT, TEXT
+            higher_is_better = name not in ('Annualized Volatility',)
+            if pv > bv:
+                return ('#166534' if higher_is_better else '#DC2626', TEXT)
+            elif pv < bv:
+                return ('#DC2626' if higher_is_better else '#166534', TEXT)
+            return TEXT, TEXT
+
+        port_colors  = []
+        bench_colors = []
+        for mn in metric_names:
+            pc, bc = _cell_color(mn, p_m[mn], b_m[mn])
+            port_colors.append(pc)
+            bench_colors.append(bc)
+
+        fig = make_subplots(
+            rows=2, cols=1,
+            row_heights=[0.55, 0.45],
+            vertical_spacing=0.06,
+            specs=[[{"type": "xy"}], [{"type": "table"}]],
+            subplot_titles=[
+                f"{cname}  ·  Cumulative Return  ({c_start} → {c_end})",
+                "Metrics Comparison",
+            ],
+        )
+
+        fig.add_trace(go.Scatter(
+            x=p_cum.index, y=p_cum.values,
+            mode='lines', name='Portfolio',
+            line=dict(color=PORT_C, width=2.5),
+            hovertemplate="%{x|%b %d, %Y}<br>Portfolio: %{y:.3f}<extra></extra>",
+        ), row=1, col=1)
+
+        fig.add_trace(go.Scatter(
+            x=b_cum.index, y=b_cum.values,
+            mode='lines', name='Benchmark (S&P 500)',
+            line=dict(color=BENCH_C, width=2.5, dash='dash'),
+            hovertemplate="%{x|%b %d, %Y}<br>Benchmark: %{y:.3f}<extra></extra>",
+        ), row=1, col=1)
+
+        fig.add_shape(
+            type='line',
+            x0=0, x1=1, xref='x domain',
+            y0=1.0, y1=1.0, yref='y',
+            line=dict(color=SUBTEXT, width=1, dash='dot'),
+        )
+
+        fig.update_yaxes(
+            title_text="Normalized Value (1.0 = start)", gridcolor=GRID,
+            tickformat=".2f", title_font=dict(color=SUBTEXT), tickfont=dict(color=SUBTEXT),
+            row=1, col=1,
+        )
+        fig.update_xaxes(
+            showgrid=False, tickfont=dict(color=SUBTEXT),
+            dtick="M1", tickformat="%b %Y", tickangle=-45,
+            row=1, col=1,
+        )
+
+        fig.add_trace(go.Table(
+            header=dict(
+                values=["<b>Metric</b>", "<b>Portfolio</b>", "<b>Benchmark (S&P 500)</b>"],
+                fill_color='#1D6FA4',
+                font=dict(color='white', size=12, family='Inter, Arial'),
+                align='left', height=30, line_color='white',
+            ),
+            cells=dict(
+                values=[
+                    metric_names,
+                    [p_m[mn] for mn in metric_names],
+                    [b_m[mn] for mn in metric_names],
+                ],
+                fill_color=[
+                    ['#F8F9FA'] * len(metric_names),
+                    ['rgba(29,111,164,0.08)'] * len(metric_names),
+                    ['rgba(249,115,22,0.08)'] * len(metric_names),
+                ],
+                font=dict(
+                    color=[
+                        [TEXT] * len(metric_names),
+                        port_colors,
+                        bench_colors,
+                    ],
+                    size=11, family='Inter, Arial',
+                ),
+                align='left', height=26, line_color=GRID,
+            ),
+        ), row=2, col=1)
+
+        for ann in fig['layout']['annotations']:
+            ann['font'] = dict(color=TEXT, size=13, family='Inter, Arial')
+
+        fig.update_layout(
+            height=800,
+            title=dict(
+                text=f"{title_prefix}{cname}  ·  Crisis Period Analysis",
+                font=dict(size=16, color=TEXT, family='Inter, Arial'),
+                x=0.5, xanchor='center',
+            ),
+            paper_bgcolor=BG,
+            plot_bgcolor=PANEL,
+            font=dict(family='Inter, Arial, sans-serif', size=12, color=TEXT),
+            showlegend=True,
+            legend=dict(
+                orientation='h', yanchor='bottom', y=1.02,
+                xanchor='right', x=1,
+                font=dict(color=TEXT, size=11),
+            ),
+            margin=dict(l=70, r=50, t=80, b=40),
+        )
+        fig.update_xaxes(linecolor=GRID, mirror=False)
+        fig.update_yaxes(linecolor=GRID, mirror=False)
+
+        divs.append(fig.to_html(full_html=False, include_plotlyjs=False))
+
+    return "\n<hr style='border:none;border-top:1px solid #E9ECEF;margin:20px 70px'>\n".join(divs)
+
+
 # ------
 # Compute and Export Metrics for Each Rebalancing Frequency
 # ------
@@ -892,14 +1073,27 @@ for freq_name in FREQUENCIES:
     df_metrics.to_csv(metrics_file, index=False)
     print(f"[{freq_name}] Metrics exported to: {metrics_file}")
 
-    section_title = f'<h2 style="font-family:Inter,Arial,sans-serif;color:#1E293B;margin:40px 0 8px 70px">{freq_name} Rebalancing</h2>'
+    section_title = f'<h2 style="font-family:Inter,Arial,sans-serif;color:#1E293B;margin:40px 0 8px 70px">Markowitz  ·  {freq_name} Rebalancing</h2>'
     div = generate_dynamic_benchmark_report(
         df_port,
         title=f"Markowitz Portfolio  ·  {freq_name} Rebalancing",
         threshold=0.05,
     )
-    all_divs.append(section_title + div)
-    print(f"[{freq_name}] Chart built.")
+
+    # ── Crisis comparison charts (portfolio vs benchmark per crisis window) ────
+    crisis_header = f'<h3 style="font-family:Inter,Arial,sans-serif;color:#1E293B;margin:32px 0 4px 70px">Crisis Period Analysis  ·  {freq_name}</h3>'
+    try:
+        crisis_div = generate_crisis_comparison_charts(
+            portfolio_df=df_port,
+            benchmark_df=df_bench,
+            title_prefix=f"{freq_name}  ·  ",
+        )
+    except Exception as e:
+        print(f"[{freq_name}] Crisis charts error: {e}")
+        crisis_div = f'<p style="font-family:Inter,Arial;color:#DC2626;margin:20px 70px">Crisis charts could not be generated: {e}</p>'
+
+    all_divs.append(section_title + div + crisis_header + crisis_div)
+    print(f"[{freq_name}] Charts built.")
 
 # Write single combined HTML
 combined_report_path = output_dir_plots / "report_all_frequencies.html"
