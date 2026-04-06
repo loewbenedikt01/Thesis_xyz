@@ -84,17 +84,17 @@ Thesis_xyz
                     returns_annual          # CSV, log return per day of the portfolio
         data                     # Folder
             benchmark			        # Folder
-                portfolio               # CSV, columns (date[month end], ticker, price adj close, returns per day) [it is buy&hold]
+                portfolio               # CSV, columns (date[daily], ticker, price adj close, returns per day) [it is buy&hold]
             equal_weight			    # Folder
-                portfolio_monthly       # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_quarterly     # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_semi-annual   # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_annual        # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_monthly       # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_quarterly     # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_semi-annual   # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_annual        # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
             hrp				            # Folder
-                portfolio_monthly       # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_quarterly     # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_semi-annual   # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_annual        # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_monthly       # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_quarterly     # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_semi-annual   # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_annual        # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
             lstm				        # Folder
                 statistics              # Folder
                     statistics_monthly              # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score, best nodes, best dropout, best val loss)
@@ -102,25 +102,25 @@ Thesis_xyz
                     statistics_semi-annual          # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score, best nodes, best dropout, best val loss)
                     statistics_annual               # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score, best nodes, best dropout, best val loss)
                 run_01                  # Folder, for each run, create a new one (10) in total
-                    portfolio_monthly       # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_quarterly     # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_semi-annual   # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_annual        # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                    portfolio_monthly       # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                    portfolio_quarterly     # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                    portfolio_semi-annual   # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                    portfolio_annual        # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
             market_cap			        # Folder
-                portfolio_monthly       # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_quarterly     # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_semi-annual   # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_annual        # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_monthly       # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_quarterly     # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_semi-annual   # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_annual        # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
             markowitz_unconstrained	    # Folder
-                portfolio_monthly       # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_quarterly     # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_semi-annual   # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_annual        # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_monthly       # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_quarterly     # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_semi-annual   # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_annual        # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
             markowitz			        # Folder
-                portfolio_monthly       # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_quarterly     # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_semi-annual   # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_annual        # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_monthly       # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_quarterly     # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_semi-annual   # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                portfolio_annual        # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
             random_forest		        # Folder
                 statistics              # Folder
                     statistics_monthly              # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score)
@@ -128,10 +128,10 @@ Thesis_xyz
                     statistics_semi-annual          # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score)
                     statistics_annual               # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score)
                 run_01                  # Folder, for each run, create a new one (10) in total
-                    portfolio_monthly       # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_quarterly     # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_semi-annual   # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_annual        # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                    portfolio_monthly       # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                    portfolio_quarterly     # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                    portfolio_semi-annual   # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                    portfolio_annual        # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
             xgboost			            # Folder
                 statistics              # Folder
                     statistics_monthly              # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score, ADF statistic, ADF p-value)
@@ -139,10 +139,10 @@ Thesis_xyz
                     statistics_semi-annual          # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score, ADF statistic, ADF p-value)
                     statistics_annual               # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score, ADF statistic, ADF p-value)
                 run_01                  # Folder, for each run, create a new one (10) in total
-                    portfolio_monthly       # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_quarterly     # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_semi-annual   # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_annual        # CSV, columns (date[month end], ticker, initial weight of rebalancing, current weight[month end], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                    portfolio_monthly       # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                    portfolio_quarterly     # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                    portfolio_semi-annual   # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
+                    portfolio_annual        # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
         plots                    # Folder with plots created for visualization
             all_models                      # Folder      
             benchmark                       # Folder
