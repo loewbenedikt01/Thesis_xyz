@@ -15,7 +15,7 @@ MIN_COMPLETENESS = 0.50     # 50% data history required
 WEIGHT_MAX = 0.10           # Max 10% per stock
 WEIGHT_MIN = 0.01           # Min 1% per stock
 N_ESTIMATORS = 135          # Number of trees
-MAX_DEPTH = 3               # Max tree depth — deeper than 8-10 overfits with 15 features
+MAX_DEPTH = 1            # Max tree depth — deeper than 8-10 overfits with 15 features
 N_RUNS = 10                 # How many independent runs per frequency (files get _1, _2, ...)
 RANDOM_SEED = 41            # Fixed seed — same result every run
 
