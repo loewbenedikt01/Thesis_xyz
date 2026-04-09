@@ -1064,7 +1064,7 @@ def load_and_average_stats(freq_name):
     """Discover all portfolio_rf_{freq}_{run}_statistics.csv, average per
     rebalance_date. Returns averaged DataFrame or None."""
     dfs, run = [], 1
-    STAT_COLS = ['RMSE', 'MSE', 'MAE', 'R_squared', 'MAPE',
+    STAT_COLS = ['RMSE', 'MSE', 'MAE', 'R_squared', 'Spearman',
                  'Directional_Accuracy', 'Geometric_Score']
     while True:
         p = DATA_DIR / f"portfolio_rf_{freq_name}_{run}_statistics.csv"
@@ -1087,7 +1087,7 @@ def load_and_average_stats(freq_name):
 
 def generate_rf_statistics_report(stats_df, freq_name) -> str:
     """Builds an HTML section with time-series charts + summary table for all
-    RF prediction quality metrics (RMSE, MSE, MAE, R², MAPE, DA, Geo-Score)."""
+    RF prediction quality metrics (RMSE, MSE, MAE, R², Spearman, DA, Geo-Score)."""
     if stats_df is None or stats_df.empty:
         return '<p style="font-family:Inter,Arial;color:#64748B;margin:20px 70px">No statistics data available.</p>'
 
@@ -1102,7 +1102,7 @@ def generate_rf_statistics_report(stats_df, freq_name) -> str:
         'MSE'                 : ('MSE',                   False, '#7C3AED'),
         'MAE'                 : ('MAE',                   False, '#D97706'),
         'R_squared'           : ('R²',                    True,  '#16A34A'),
-        'MAPE'                : ('MAPE',                  False, '#DC2626'),
+        'Spearman'            : ('Spearman Correlation',   True,  '#DC2626'),
         'Directional_Accuracy': ('Directional Accuracy',  True,  '#0891B2'),
         'Geometric_Score'     : ('Geometric Score',        True,  '#059669'),
     }

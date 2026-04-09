@@ -15,15 +15,15 @@ MIN_COMPLETENESS = 0.50     # 50% data history required
 WEIGHT_MAX = 0.10           # Max 10% per stock
 WEIGHT_MIN = 0.01           # Min 1% per stock
 N_ESTIMATORS = 135          # Number of trees
-MAX_DEPTH = 20              # Max tree depth
-N_RUNS = 1                  # How many independent runs per frequency (files get _1, _2, ...)
-RANDOM_SEED = 42            # Fixed seed — same result every run
+MAX_DEPTH = 3               # Max tree depth — deeper than 8-10 overfits with 15 features
+N_RUNS = 10                 # How many independent runs per frequency (files get _1, _2, ...)
+RANDOM_SEED = 41            # Fixed seed — same result every run
 
 FREQUENCIES = {
-    'Yearly': pd.DateOffset(years=1),
-    'Semi-Annual': pd.DateOffset(months=6),
-    'Quarterly': pd.DateOffset(months=3),
-    'Monthly': pd.DateOffset(months=1)
+    'Yearly':      (pd.DateOffset(years=1),  252),
+    'Semi-Annual': (pd.DateOffset(months=6), 126),
+    'Quarterly':   (pd.DateOffset(months=3),  63),
+    'Monthly':     (pd.DateOffset(months=1),  21),
 }
 
 start_invest = pd.Timestamp("1998-01-01")
@@ -43,41 +43,57 @@ import universe
 
 def create_features(prices_df):
     """Generates technical and risk features for the RF model."""
-    if len(prices_df) < 252: return pd.DataFrame()
-    
+    if len(prices_df) < 260: return pd.DataFrame()
+
     features = pd.DataFrame(index=prices_df.columns)
     returns = prices_df.pct_change()
 
-    # 1. Momentum & Trend
-    features['mom_1m'] = prices_df.pct_change(21).iloc[-1]
-    features['mom_6m'] = prices_df.pct_change(126).iloc[-1]
-    features['mom_12m'] = prices_df.pct_change(252).iloc[-1]
-    
-    # 2. Moving Average Ratio (50 / 200)
-    ma50 = prices_df.tail(50).mean()
+    # 1. Momentum
+    features['mom_1w']   = prices_df.pct_change(5).iloc[-1]            # short-term reversal signal
+    features['mom_1m']   = prices_df.pct_change(21).iloc[-1]
+    features['mom_3m']   = prices_df.pct_change(63).iloc[-1]
+    features['mom_6m']   = prices_df.pct_change(126).iloc[-1]
+    features['mom_12_1'] = prices_df.iloc[-22] / prices_df.iloc[-253] - 1  # skip-month: t-2m to t-13m
+
+    # 2. Trend
+    ma50  = prices_df.tail(50).mean()
     ma200 = prices_df.tail(200).mean()
     features['ma_ratio'] = ma50 / ma200
-    
-    # 3. Distance from 52-Week High
+
+    # 3. Distance from 52-week high
     high_52w = prices_df.tail(252).max()
     features['dist_52w_high'] = prices_df.iloc[-1] / high_52w
-    
-    # 4. Max Drawdown (Last 12 Months)
-    window_1y = prices_df.tail(252)
+
+    # 4. Max drawdown (last 12 months)
+    window_1y   = prices_df.tail(252)
     rolling_max = window_1y.cummax()
-    drawdown = (window_1y - rolling_max) / rolling_max
-    features['max_dd_12m'] = drawdown.min()
-    
-    # 5. Volatility (6m & 12m)
-    features['vol_6m'] = returns.tail(126).std() * np.sqrt(252)
-    features['vol_12m'] = returns.tail(252).std() * np.sqrt(252)
-    
-    # 6. RSI (Standard 14-day)
-    delta = returns.tail(15) # Need 14 changes
-    gain = delta.clip(lower=0).mean()
-    loss = -delta.clip(upper=0).mean()
-    rs = gain / (loss + 1e-9) # Avoid division by zero
+    features['max_dd_12m'] = ((window_1y - rolling_max) / rolling_max).min()
+
+    # 5. Volatility + regime ratio
+    vol_1m  = returns.tail(21).std()  * np.sqrt(252)
+    vol_6m  = returns.tail(126).std() * np.sqrt(252)
+    vol_12m = returns.tail(252).std() * np.sqrt(252)
+    features['vol_1m']    = vol_1m
+    features['vol_6m']    = vol_6m
+    features['vol_12m']   = vol_12m
+    features['vol_ratio'] = vol_1m / (vol_12m + 1e-9)   # >1 = heating up, <1 = calming down
+
+    # 6. Bollinger Band position: (price - 20d MA) / (2 * 20d std)
+    p20 = prices_df.tail(20)
+    features['bb_position'] = (prices_df.iloc[-1] - p20.mean()) / (2 * p20.std() + 1e-9)
+
+    # 7. RSI — Wilder's EMA (proper 14-period implementation)
+    delta    = returns.tail(252)
+    avg_gain = delta.clip(lower=0).ewm(alpha=1/14, min_periods=14, adjust=False).mean().iloc[-1]
+    avg_loss = (-delta.clip(upper=0)).ewm(alpha=1/14, min_periods=14, adjust=False).mean().iloc[-1]
+    rs = avg_gain / (avg_loss + 1e-9)
     features['rsi'] = 100 - (100 / (1 + rs))
+
+    # 8. Sharpe-like score (risk-adjusted momentum)
+    features['sharpe_6m'] = features['mom_6m'] / (features['vol_6m'] + 1e-9)
+
+    # Cross-sectional rank normalization: each feature → percentile rank across stocks (0=worst, 1=best)
+    features = features.rank(pct=True)
 
     return features.dropna()
 
@@ -96,11 +112,11 @@ def allocate_weights(predictions, w_min, w_max):
 
 # --- Backtest Loop ---
 for run in range(1, N_RUNS + 1):
-    run_seed = RANDOM_SEED  # same seed every run — change RANDOM_SEED at the top to vary
+    run_seed = RANDOM_SEED + run  # different seed per run for true ensemble averaging
     print(f"\n=== Run {run}/{N_RUNS} (seed={run_seed}) ===")
 
-    for label, offset in FREQUENCIES.items():
-        print(f"  Processing Random Forest ({label}) | min coverage: {MIN_COMPLETENESS:.0%}")
+    for label, (offset, horizon) in FREQUENCIES.items():
+        print(f"  Processing Random Forest ({label}) | horizon={horizon}d | min coverage: {MIN_COMPLETENESS:.0%}")
 
         current_date = start_invest
         portfolio_value = 1.0
@@ -117,6 +133,7 @@ for run in range(1, N_RUNS + 1):
             actual_trade_date = valid_days[0]
 
             target_weights = None  # will be set by model or fallback
+            pred_series = None    # reset each period; only set when model runs
 
             target_year = current_date.year - 1
             if target_year in universe.tickers:
@@ -131,30 +148,69 @@ for run in range(1, N_RUNS + 1):
                 if not hist_prices.empty:
                     coverage      = hist_prices.notnull().sum() / len(hist_prices)
                     valid_tickers = coverage[coverage >= MIN_COMPLETENESS].index.tolist()
+                    X_train, y_train = [], []
+                    X_val,   y_val   = [], []
 
                     if len(valid_tickers) >= 2:
-                        X_train, y_train = [], []
                         train_prices = hist_prices[valid_tickers].ffill()
 
-                        for i in range(252, len(train_prices) - 21, 21):
+                        # Temporal split: last VAL_MONTHS of history reserved for validation
+                        val_start_date = actual_trade_date - pd.DateOffset(months=VAL_MONTHS)
+                        val_split = int(np.searchsorted(train_prices.index, val_start_date))
+
+                        # Training samples: forward target must land before the val period
+                        for i in range(260, val_split - horizon, 21):
                             feat = create_features(train_prices.iloc[:i])
                             if feat.empty: continue
-                            fwd_ret = train_prices.iloc[i+21] / train_prices.iloc[i] - 1
-                            common  = feat.index.intersection(fwd_ret.dropna().index)
+                            fwd_ret = train_prices.iloc[i+horizon] / train_prices.iloc[i] - 1
+                            fwd_ret = fwd_ret.dropna()
+                            common  = feat.index.intersection(fwd_ret.index)
+                            if len(common) < 2: continue
+                            # Rank-normalize target: model predicts cross-sectional rank (0=worst, 1=best)
+                            y_ranked = fwd_ret.loc[common].rank(pct=True)
                             X_train.append(feat.loc[common])
-                            y_train.append(fwd_ret.loc[common])
+                            y_train.append(y_ranked)
+
+                        # Validation samples: observations that start in the val window
+                        for i in range(val_split, len(train_prices) - horizon, 21):
+                            feat = create_features(train_prices.iloc[:i])
+                            if feat.empty: continue
+                            fwd_ret = train_prices.iloc[i+horizon] / train_prices.iloc[i] - 1
+                            fwd_ret = fwd_ret.dropna()
+                            common  = feat.index.intersection(fwd_ret.index)
+                            if len(common) < 2: continue
+                            y_ranked = fwd_ret.loc[common].rank(pct=True)
+                            X_val.append(feat.loc[common])
+                            y_val.append(y_ranked)
 
                         if X_train:
                             model = RandomForestRegressor(
-                                n_estimators=N_ESTIMATORS, max_depth=MAX_DEPTH,
-                                n_jobs=-1, random_state=run_seed,
+                                n_estimators=N_ESTIMATORS,
+                                max_depth=MAX_DEPTH,
+                                min_samples_leaf=5,
+                                max_features='sqrt',
+                                n_jobs=-1,
+                                random_state=run_seed,
                             )
                             model.fit(pd.concat(X_train), pd.concat(y_train))
 
-                            current_feat = create_features(train_prices)
-                            preds        = model.predict(current_feat)
-                            # All tickers that passed MIN_COMPLETENESS — no TOP_N cutoff
-                            pred_series  = pd.Series(preds, index=current_feat.index).sort_values(ascending=False)
+                            # Evaluate on validation set (out-of-sample diagnostic)
+                            if X_val:
+                                Xv      = pd.concat(X_val)
+                                yv      = pd.concat(y_val)
+                                yv_pred = model.predict(Xv)
+                                ss_res  = np.sum((yv.values - yv_pred) ** 2)
+                                ss_tot  = np.sum((yv.values - yv.values.mean()) ** 2)
+                                val_r2  = 1 - ss_res / ss_tot if ss_tot != 0 else np.nan
+                                val_da  = np.mean((yv_pred >= 0.5) == (yv.values >= 0.5))
+                                print(f"  [{label}] {current_date.date()} — Val R²={val_r2:.3f}  Val DA={val_da:.1%}")
+
+                                # Retrain on train + val combined so all recent data informs prediction
+                                model.fit(pd.concat(X_train + X_val), pd.concat(y_train + y_val))
+
+                            current_feat   = create_features(train_prices)
+                            preds          = model.predict(current_feat)
+                            pred_series    = pd.Series(preds, index=current_feat.index).sort_values(ascending=False)
                             target_weights = allocate_weights(pred_series, WEIGHT_MIN, WEIGHT_MAX)
 
             # Fallback: carry forward last weights, or equal-weight if first period
@@ -209,16 +265,21 @@ for run in range(1, N_RUNS + 1):
                     })
 
                 # ── Model evaluation: predicted vs actual realized return ──────
-                # Actual return over the period for each selected stock
-                first_price = period_prices.iloc[0]
-                last_price  = period_prices.iloc[-1]
+                # Use only the actual holding period (trade date → next rebalance)
+                hold_prices = period_prices.loc[actual_trade_date:]
+                first_price = hold_prices.iloc[0]
+                last_price  = hold_prices.iloc[-1]
                 actual_ret  = (last_price / first_price - 1).dropna()
-                common_idx  = pred_series.index.intersection(actual_ret.index)
+                common_idx  = pred_series.index.intersection(actual_ret.index) if pred_series is not None else []
                 if len(common_idx) >= 2:
-                    y_pred = pred_series.loc[common_idx].values
-                    y_true = actual_ret.loc[common_idx].values
-                    # Direction arrays (1 = up, 0 = down)
-                    pred_dir = (y_pred >= 0).astype(int)
+                    y_pred = pred_series.loc[common_idx].values   # predicted rank [0, 1]
+                    y_true = actual_ret.loc[common_idx].values    # actual raw return
+
+                    # Rank-normalize actual returns for metric calculation vs predicted ranks
+                    y_true_rank = pd.Series(y_true).rank(pct=True).values
+
+                    # Direction: predicted rank > 0.5 means "top half" = up prediction
+                    pred_dir = (y_pred >= 0.5).astype(int)
                     true_dir = (y_true >= 0).astype(int)
                     tp = np.sum((pred_dir == 1) & (true_dir == 1))
                     tn = np.sum((pred_dir == 0) & (true_dir == 0))
@@ -228,15 +289,17 @@ for run in range(1, N_RUNS + 1):
                     specificity = tn / (tn + fp) if (tn + fp) > 0 else np.nan
                     geo_score   = np.sqrt(sensitivity * specificity) if not (np.isnan(sensitivity) or np.isnan(specificity)) else np.nan
                     dir_acc     = np.mean(pred_dir == true_dir)
-                    mse  = np.mean((y_pred - y_true) ** 2)
+
+                    # Error metrics on rank vs rank (both in [0,1] — comparable and stable)
+                    mse  = np.mean((y_pred - y_true_rank) ** 2)
                     rmse = np.sqrt(mse)
-                    mae  = np.mean(np.abs(y_pred - y_true))
-                    ss_res = np.sum((y_true - y_pred) ** 2)
-                    ss_tot = np.sum((y_true - y_true.mean()) ** 2)
+                    mae  = np.mean(np.abs(y_pred - y_true_rank))
+                    ss_res = np.sum((y_true_rank - y_pred) ** 2)
+                    ss_tot = np.sum((y_true_rank - y_true_rank.mean()) ** 2)
                     r2   = 1 - ss_res / ss_tot if ss_tot != 0 else np.nan
-                    # MAPE: skip zeros in denominator
-                    nonzero = y_true != 0
-                    mape = np.mean(np.abs((y_pred[nonzero] - y_true[nonzero]) / y_true[nonzero])) if nonzero.any() else np.nan
+
+                    # Spearman rank correlation: how well does predicted rank match actual rank
+                    spearman = pd.Series(y_pred).corr(pd.Series(y_true_rank), method='spearman')
                     model_stats.append({
                         'rebalance_date'      : actual_trade_date.strftime('%Y-%m-%d'),
                         'n_stocks'            : len(common_idx),
@@ -244,7 +307,7 @@ for run in range(1, N_RUNS + 1):
                         'MSE'                 : mse,
                         'MAE'                 : mae,
                         'R_squared'           : r2,
-                        'MAPE'                : mape,
+                        'Spearman'            : spearman,
                         'Directional_Accuracy': dir_acc,
                         'Geometric_Score'     : geo_score,
                     })
