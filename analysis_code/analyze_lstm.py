@@ -302,6 +302,8 @@ def metrics_to_dataframe(results: dict) -> pd.DataFrame:
         'benchmark_ann_return'       : ('Benchmark', 'Benchmark Annualized Return', '{:.2%}'),
         'annualized_volatility'      : ('Risk',      'Annualized Volatility',       '{:.2%}'),
         'maximum_drawdown'           : ('Risk',      'Maximum Drawdown',            '{:.2%}'),
+        'dd_duration_to_trough'      : ('Risk',      'DD Duration to Trough (days)','{:.0f}'),
+        'recovery_duration'          : ('Risk',      'Recovery Duration (days)',    '{:.0f}'),
         'var_95'                     : ('Risk',      'Value at Risk (95%)',         '{:.2%}'),
         'cvar_95'                    : ('Risk',      'CVaR / Expected Shortfall',   '{:.2%}'),
         'sharpe'                     : ('Ratios',    'Sharpe Ratio',                '{:.3f}'),

@@ -23,12 +23,12 @@ VAL_MONTHS       = 12           # 1 Year Validation
 MIN_COMPLETENESS = 0.50         # 50% data history required
 WEIGHT_MAX       = 0.10         # Max 10% per stock
 WEIGHT_MIN       = 0.01         # Min 1% per stock
-N_RUNS           = 1           # How many independent runs per frequency
+N_RUNS           = 2           # How many independent runs per frequency
 RANDOM_SEED      = 41           # Base seed — each run uses RANDOM_SEED + run
 SEQ_LEN          = 12           # Monthly snapshots per LSTM sequence
 
 # Grid search hyperparameters
-NODES            = [5, 10, 15, 20, 25]
+NODES            = [25]
 DROPOUTS         = [0.1, 0.3]
 GRID_EPOCHS      = 15           # Max epochs during grid search
 GRID_PATIENCE    = 3            # Early stopping patience during grid search
