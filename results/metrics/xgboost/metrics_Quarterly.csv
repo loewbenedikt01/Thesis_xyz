@@ -1,0 +1,72 @@
+Category,Metric,Value
+Returns,Cumulative Return,2241.61%
+Returns,Annualized Return,11.95%
+Benchmark,Benchmark Cumulative Return,607.28%
+Benchmark,Benchmark Annualized Return,7.25%
+Risk,Annualized Volatility,21.21%
+Risk,Maximum Drawdown,-52.00%
+Risk,DD Duration to Trough (days),1596
+Risk,Recovery Duration (days),861
+Risk,Value at Risk (95%),-2.05%
+Risk,CVaR / Expected Shortfall,-3.17%
+Ratios,Sharpe Ratio,0.563
+Ratios,Sortino Ratio,0.800
+Ratios,Calmar Ratio,0.230
+Ratios,Omega Ratio,1.104
+Benchmark,Beta,1.038
+Benchmark,Alpha (Annualized),4.42%
+Benchmark,Information Ratio,0.634
+Dotcom Crash,Max Drawdown (%),-42.51%
+Dotcom Crash,Days: Peak → Trough,915
+Dotcom Crash,Days: Trough → Breakeven,1407
+Dotcom Crash,Days: Peak → Breakeven (Total),2322
+Dotcom Crash,Cumulative Return (Crisis),23.96%
+Dotcom Crash,Annualized Return (Crisis),3.04%
+Dotcom Crash,Annualized Volatility (Crisis),19.27%
+Dotcom Crash,Sharpe Ratio (Crisis),0.158
+Dotcom Crash,Sortino Ratio (Crisis),0.226
+GFC,Max Drawdown (%),-52.00%
+GFC,Days: Peak → Trough,517
+GFC,Days: Trough → Breakeven,1246
+GFC,Days: Peak → Breakeven (Total),1763
+GFC,Cumulative Return (Crisis),6.84%
+GFC,Annualized Return (Crisis),1.22%
+GFC,Annualized Volatility (Crisis),26.61%
+GFC,Sharpe Ratio (Crisis),0.046
+GFC,Sortino Ratio (Crisis),0.064
+Monetary Policy,Max Drawdown (%),-17.83%
+Monetary Policy,Days: Peak → Trough,117
+Monetary Policy,Days: Trough → Breakeven,78
+Monetary Policy,Days: Peak → Breakeven (Total),195
+Monetary Policy,Cumulative Return (Crisis),6.83%
+Monetary Policy,Annualized Return (Crisis),12.08%
+Monetary Policy,Annualized Volatility (Crisis),19.72%
+Monetary Policy,Sharpe Ratio (Crisis),0.613
+Monetary Policy,Sortino Ratio (Crisis),0.876
+COVID-19,Max Drawdown (%),-31.84%
+COVID-19,Days: Peak → Trough,33
+COVID-19,Days: Trough → Breakeven,142
+COVID-19,Days: Peak → Breakeven (Total),175
+COVID-19,Cumulative Return (Crisis),1.32%
+COVID-19,Annualized Return (Crisis),2.72%
+COVID-19,Annualized Volatility (Crisis),48.81%
+COVID-19,Sharpe Ratio (Crisis),0.056
+COVID-19,Sortino Ratio (Crisis),0.075
+Russia/Ukraine,Max Drawdown (%),-32.92%
+Russia/Ukraine,Days: Peak → Trough,282
+Russia/Ukraine,Days: Trough → Breakeven,261
+Russia/Ukraine,Days: Peak → Breakeven (Total),543
+Russia/Ukraine,Cumulative Return (Crisis),12.95%
+Russia/Ukraine,Annualized Return (Crisis),6.15%
+Russia/Ukraine,Annualized Volatility (Crisis),23.31%
+Russia/Ukraine,Sharpe Ratio (Crisis),0.264
+Russia/Ukraine,Sortino Ratio (Crisis),0.374
+Trade Policy Shock,Max Drawdown (%),-21.61%
+Trade Policy Shock,Days: Peak → Trough,113
+Trade Policy Shock,Days: Trough → Breakeven,83
+Trade Policy Shock,Days: Peak → Breakeven (Total),196
+Trade Policy Shock,Cumulative Return (Crisis),1.07%
+Trade Policy Shock,Annualized Return (Crisis),3.07%
+Trade Policy Shock,Annualized Volatility (Crisis),30.99%
+Trade Policy Shock,Sharpe Ratio (Crisis),0.099
+Trade Policy Shock,Sortino Ratio (Crisis),0.146

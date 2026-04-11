@@ -24,10 +24,10 @@ CV_FOLDS         = 3        # Cross-validation folds inside GridSearchCV
 # Hyperparameter grid
 # 3 × 2 × 2 × 2 × 2 = 48 combinations → 144 fits per rebalance (manageable)
 PARAM_GRID = {
-    'learning_rate': [0.05, 0.10, 0.20],   # eta: step shrinkage
-    'max_depth':     [3, 5],                # tree depth (shallow = regularized)
-    'reg_lambda':    [1, 5],                # L2 regularisation on leaf weights
-    'n_estimators':  [50, 100],             # boosting rounds
+    'learning_rate': [0.01, 0.05, 0.10, 0.20],   # eta: step shrinkage
+    'max_depth':     [1, 2, 3, 5],                # tree depth (shallow = regularized)
+    'reg_lambda':    [1, 3, 5],                # L2 regularisation on leaf weights
+    'n_estimators':  [50, 100, 200],             # boosting rounds
     'gamma':         [0.0, 0.1],            # min loss reduction to split a node
 }
 
