@@ -14,11 +14,18 @@ from scipy import stats
 
 # Path to directory
 DATA_PATH = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
-output_dir_metrics = DATA_PATH / "results" / "metrics" / "random_forest"
-output_dir_plots = DATA_PATH / "results" / "plots" / "random_forest"
+
+# ── Depth configuration ─────────────────────────────────────────────────────
+# Set this to match the MAX_DEPTH used in random_forest.py before running.
+# Each depth gets its own metrics subfolder (rf_depth_1, rf_depth_2, …) so
+# calculate_score_rf.py can compare all depths side-by-side.
+DEPTH = 1
+
+output_dir_metrics = DATA_PATH / "results" / "metrics" / f"rf_depth_{DEPTH}"
+output_dir_plots   = DATA_PATH / "results" / "plots"   / "random_forest"
 output_dir_metrics.mkdir(parents=True, exist_ok=True)
 output_dir_plots.mkdir(parents=True, exist_ok=True)
-DATA_DIR = DATA_PATH / "results" / "data" / "random_forest"
+DATA_DIR = DATA_PATH / "results" / "data" / f"rf_depth_{DEPTH}"
 
 # Date Range
 start_date = "1998-01-01"
@@ -1252,8 +1259,8 @@ for freq_name in FREQUENCIES:
     all_divs.append(section_title + div + stats_header + stats_div + crisis_header + crisis_div)
     print(f"[{freq_name}] All charts built.")
 
-# Write single combined HTML
-combined_report_path = output_dir_plots / "report_all_frequencies.html"
+# Write single combined HTML (depth-specific name)
+combined_report_path = output_dir_plots / f"report_all_frequencies_{DEPTH}_depth.html"
 combined_html = """<!DOCTYPE html>
 <html>
 <head>

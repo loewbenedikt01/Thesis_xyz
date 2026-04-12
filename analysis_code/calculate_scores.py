@@ -45,10 +45,12 @@ from pathlib import Path
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
-RESULTS_DIR   = Path("results")          # adjust if your root differs
+RESULTS_DIR   = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz\results")
 METRICS_DIR   = RESULTS_DIR / "metrics"
 BENCHMARK_DIR = METRICS_DIR / "benchmark"
-DATA_DIR      = RESULTS_DIR / "data"     # raw portfolio CSVs (for Q1 computation)
+DATA_DIR      = RESULTS_DIR / "data"        # raw portfolio CSVs (for Q1 computation)
+OUTPUT_DIR    = RESULTS_DIR / "plots" / "all_models"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 FREQUENCIES = ["Monthly", "Quarterly", "Semi-Annual", "Yearly"]
 
@@ -106,10 +108,20 @@ CRISIS_LABELS = [
 # the portfolio that has a smaller absolute loss.
 ABS_MAGNITUDE_COLS = {
     "Max Drawdown (%)",
-    "Cumulative Return (Crisis)",
     "Value at Risk (95%)",
     "CVaR / Expected Shortfall",
     "1st Quartile Average Drawdown",
+}
+
+# Metrics where a HIGHER value is better.
+# δ is negated before scoring so portfolio > benchmark → δ_eff < 0 → positive σ.
+# NOTE: "Cumulative Return (Crisis)" belongs here — NOT in ABS_MAGNITUDE_COLS —
+# because during many crises both sides are positive (e.g. Russia/Ukraine +16.77%
+# vs +1.54%).  abs() would treat the larger positive return as "worse", which is
+# the opposite of the correct direction.
+HIGHER_IS_BETTER_COLS = {
+    "Annualized Return",
+    "Cumulative Return (Crisis)",
 }
 
 # ─── Drawdown / quartile helpers ─────────────────────────────────────────────
@@ -190,7 +202,13 @@ def compute_q1_metrics(model: str, frequency: str, threshold: float = 0.05) -> d
     for csv_path in csv_files:
         try:
             df  = pd.read_csv(csv_path, index_col='date', parse_dates=True).sort_index()
-            cum = df['cumulative_value'].dropna()
+            # benchmark uses 'price'; portfolio models use 'cumulative_value'
+            if 'cumulative_value' in df.columns:
+                cum = df['cumulative_value'].dropna()
+            elif 'price' in df.columns:
+                cum = df['price'].dropna()
+            else:
+                continue
             if len(cum) < 20:
                 continue
             episodes = _find_drawdown_episodes(cum, threshold)
@@ -291,11 +309,16 @@ def load_metrics_csv(folder: Path, frequency: str) -> pd.DataFrame | None:
           'Risk'    | 'Annualized Volatility' | '15.20%'
           'Dotcom Crash' | 'Max Drawdown (%)' | '-45.20%'
 
+    The benchmark only produces metrics_buy_hold.csv (frequency-independent),
+    so that file is used as a fallback when the frequency-specific file is absent.
+
     Output: one row per Category (crisis rows kept as-is), plus a synthetic
     'overall' row that merges all non-crisis categories so the existing
     get_row(df, 'overall') lookup continues to work.
     """
     path = folder / f"metrics_{frequency}.csv"
+    if not path.exists():
+        path = folder / "metrics_buy_hold.csv"   # benchmark fallback
     if not path.exists():
         return None
 
@@ -333,8 +356,9 @@ def load_metrics_csv(folder: Path, frequency: str) -> pd.DataFrame | None:
 
 
 def get_row(df: pd.DataFrame, label_norm: str) -> pd.Series | None:
-    """Return the first row whose normalised label contains label_norm."""
-    matches = df[df["period_norm"].str.contains(label_norm, regex=False)]
+    """Return the first row whose normalised label contains label_norm (case-insensitive)."""
+    query   = label_norm.strip().lower()
+    matches = df[df["period_norm"].str.contains(query, regex=False)]
     if matches.empty:
         return None
     return matches.iloc[0]
@@ -370,6 +394,8 @@ def score_metric(col: str,
         return score_absolute(delta)
     else:
         delta = compute_delta_relative(bval, pval)
+        if col in HIGHER_IS_BETTER_COLS:
+            delta = -delta   # portfolio > benchmark → δ < 0 → positive σ
         return score_relative(delta)
 
 
@@ -403,6 +429,11 @@ def score_model_frequency(model: str, frequency: str) -> dict:
     for label in CRISIS_LABELS:
         brow = get_row(bmark_df, label)
         prow = get_row(port_df,  label)
+
+        if brow is None:
+            print(f"    [WARN] Benchmark row missing for crisis '{label}' [{frequency}]")
+        if prow is None:
+            print(f"    [WARN] {model} row missing for crisis '{label}' [{frequency}]")
 
         if brow is None or prow is None:
             result[f"CS_{label}"] = np.nan
@@ -589,7 +620,8 @@ def generate_html(df: pd.DataFrame, path: str = "scoring_results.html") -> None:
         if sub.empty:
             continue
 
-        sub = sub.sort_values("ScoreTotal", ascending=False)
+        if "ScoreTotal" in sub.columns:
+            sub = sub.sort_values("ScoreTotal", ascending=False)
 
         # ── build column groups ───────────────────────────────────────────
         # Group 1: identity + totals + OS detail
@@ -717,19 +749,278 @@ def generate_html(df: pd.DataFrame, path: str = "scoring_results.html") -> None:
     print(f"✓ HTML saved →  {path}")
 
 
+# ─── Actual-values export ────────────────────────────────────────────────────
+
+# Format specs for each metric column (for display in the actual-values table)
+_FMT = {
+    "Max Drawdown (%)":                         "{:.2%}",
+    "Days: Trough to Breakeven":                "{:.0f}d",
+    "Days: Peak to Breakeven (Total)":          "{:.0f}d",
+    "Cumulative Return (Crisis)":               "{:.2%}",
+    "Annualized Volatility (Crisis)":           "{:.2%}",
+    "Sharpe Ratio (Crisis)":                    "{:.3f}",
+    "Sortino Ratio (Crisis)":                   "{:.3f}",
+    "Annualized Return":                        "{:.2%}",
+    "Annualized Volatility":                    "{:.2%}",
+    "Value at Risk (95%)":                      "{:.2%}",
+    "CVaR / Expected Shortfall":                "{:.2%}",
+    "1st Quartile Average Drawdown":            "{:.2%}",
+    "1st Quartile Average Duration to Trough":  "{:.0f}d",
+    "1st Quartile Average Recovery Duration":   "{:.0f}d",
+}
+
+def _fmt_actual(col: str, val) -> str:
+    try:
+        v = float(val)
+        if np.isnan(v):
+            return "—"
+        fmt = _FMT.get(col, "{:.4f}")
+        return fmt.format(v)
+    except (TypeError, ValueError):
+        return "—"
+
+
+def collect_actual_values(models: list[str] = MODELS,
+                          frequencies: list[str] = FREQUENCIES) -> pd.DataFrame:
+    """Build a DataFrame of raw metric values (not σ scores) for every
+    model × frequency combination.  Columns mirror the scoring table:
+      model | frequency |
+      <crisis>_<metric>  (one per crisis × metric)  |
+      overall_<metric>   (one per overall metric)
+    """
+    rows = []
+    for model in models:
+        for freq in frequencies:
+            row: dict = {"model": model, "frequency": freq}
+
+            port_df  = load_metrics_csv(METRICS_DIR / model, freq)
+            bmark_df = load_metrics_csv(BENCHMARK_DIR, freq)
+
+            # ── Crisis metrics ────────────────────────────────────────────
+            for label in CRISIS_LABELS:
+                prow  = get_row(port_df,  label) if port_df  is not None else None
+                brow  = get_row(bmark_df, label) if bmark_df is not None else None
+                short = label.replace("/", "-").replace(" ", "_").lower()
+
+                for col in CRISIS_METRIC_COLS:
+                    key = f"{short}_{col}"
+                    try:
+                        row[key] = float(prow[col]) if prow is not None else np.nan
+                    except (KeyError, TypeError, ValueError):
+                        row[key] = np.nan
+                    # benchmark column
+                    bkey = f"bm_{short}_{col}"
+                    try:
+                        row[bkey] = float(brow[col]) if brow is not None else np.nan
+                    except (KeyError, TypeError, ValueError):
+                        row[bkey] = np.nan
+
+            # ── Overall metrics ───────────────────────────────────────────
+            prow_os  = get_row(port_df,  "overall") if port_df  is not None else None
+            brow_os  = get_row(bmark_df, "overall") if bmark_df is not None else None
+
+            # inject Q1 values
+            port_q1  = compute_q1_metrics(model,       freq)
+            bmark_q1 = compute_q1_metrics("benchmark", freq)
+            if prow_os is not None:
+                prow_os = prow_os.copy()
+                for k, v in port_q1.items():
+                    prow_os[k] = v
+            if brow_os is not None:
+                brow_os = brow_os.copy()
+                for k, v in bmark_q1.items():
+                    brow_os[k] = v
+
+            for col in OVERALL_METRIC_COLS:
+                key = f"overall_{col}"
+                try:
+                    row[key] = float(prow_os[col]) if prow_os is not None else np.nan
+                except (KeyError, TypeError, ValueError):
+                    row[key] = np.nan
+                bkey = f"bm_overall_{col}"
+                try:
+                    row[bkey] = float(brow_os[col]) if brow_os is not None else np.nan
+                except (KeyError, TypeError, ValueError):
+                    row[bkey] = np.nan
+
+            rows.append(row)
+
+    return pd.DataFrame(rows)
+
+
+def save_actual_csv(df: pd.DataFrame, path: str) -> None:
+    """Save the actual-values DataFrame to CSV (raw floats, rounded to 6 dp)."""
+    out = df.copy()
+    float_cols = out.select_dtypes(include="number").columns
+    out[float_cols] = out[float_cols].round(6)
+    out.to_csv(path, index=False)
+    print(f"✓ Actual-values CSV saved  →  {path}")
+
+
+def generate_actual_html(df: pd.DataFrame, path: str) -> None:
+    """Write a styled HTML table of raw metric values, grouped by frequency.
+    Each section shows portfolio values with the benchmark value in parentheses.
+    """
+    BG      = "#FFFFFF"
+    HDR     = "#0F4C75"
+    TEXT    = "#1E293B"
+    SUBTEXT = "#64748B"
+    GRID    = "#E9ECEF"
+
+    metric_short = {
+        "Max Drawdown (%)":                         "Max DD",
+        "Days: Trough to Breakeven":                "Trough→BEven",
+        "Days: Peak to Breakeven (Total)":          "Peak→BEven",
+        "Cumulative Return (Crisis)":               "Cum Ret",
+        "Annualized Volatility (Crisis)":           "Ann Vol",
+        "Sharpe Ratio (Crisis)":                    "Sharpe",
+        "Sortino Ratio (Crisis)":                   "Sortino",
+        "Annualized Return":                        "Ann Ret",
+        "Annualized Volatility":                    "Ann Vol",
+        "Value at Risk (95%)":                      "VaR 95%",
+        "CVaR / Expected Shortfall":                "CVaR",
+        "1st Quartile Average Drawdown":            "Q1 DD",
+        "1st Quartile Average Duration to Trough":  "Q1 Dur",
+        "1st Quartile Average Recovery Duration":   "Q1 Rec",
+    }
+
+    sections = []
+
+    for freq in FREQUENCIES:
+        sub = df[df["frequency"] == freq].copy()
+        if sub.empty:
+            continue
+
+        # ── Build display columns ─────────────────────────────────────────
+        # crisis groups: (label, short, [col, ...])
+        crisis_groups = []
+        for label in CRISIS_LABELS:
+            short = label.replace("/", "-").replace(" ", "_").lower()
+            cols  = [f"{short}_{c}" for c in CRISIS_METRIC_COLS if f"{short}_{c}" in sub.columns]
+            crisis_groups.append((label, short, cols))
+
+        overall_cols = [f"overall_{c}" for c in OVERALL_METRIC_COLS if f"overall_{c}" in sub.columns]
+
+        # ── Header row 1: group spans ─────────────────────────────────────
+        spans = [
+            ("Model", 1, HDR),
+            ("Overall Metrics", len(overall_cols), "#1A5276"),
+        ]
+        for label, _, cols in crisis_groups:
+            spans.append((label, len(cols), "#1D3A5A"))
+
+        hdr1 = "".join(
+            f'<th colspan="{sp}" style="background:{bg};color:#fff;padding:8px 6px;'
+            f'border:1px solid {GRID};white-space:nowrap">{lbl}</th>'
+            for lbl, sp, bg in spans if sp > 0
+        )
+
+        # ── Header row 2: individual metric labels ────────────────────────
+        display_cols = ["model"] + overall_cols + \
+                       [c for _, _, cols in crisis_groups for c in cols]
+
+        def _col_label(c):
+            for k, v in metric_short.items():
+                if k in c:
+                    return v
+            return c
+        hdr2 = "".join(
+            f'<th style="background:{HDR};color:#fff;padding:6px 5px;border:1px solid {GRID};'
+            f'font-size:11px;white-space:nowrap">{"Model" if c == "model" else _col_label(c)}</th>'
+            for c in display_cols
+        )
+
+        # ── Data rows ─────────────────────────────────────────────────────
+        rows_html = []
+        for rank, (_, row) in enumerate(sub.iterrows(), 1):
+            row_bg = "#FAFAFA" if rank % 2 == 0 else BG
+            cells  = []
+            for c in display_cols:
+                val = row.get(c, np.nan)
+                if c == "model":
+                    cells.append(
+                        f'<td style="background:{row_bg};padding:6px 8px;border:1px solid {GRID};'
+                        f'font-weight:600;white-space:nowrap">{val}</td>'
+                    )
+                else:
+                    # find underlying metric name
+                    metric_col = next((m for m in CRISIS_METRIC_COLS + OVERALL_METRIC_COLS if m in c), c)
+                    # benchmark value
+                    bm_key = "bm_" + c
+                    bm_val = row.get(bm_key, np.nan)
+                    port_str = _fmt_actual(metric_col, val)
+                    bm_str   = _fmt_actual(metric_col, bm_val)
+                    display  = port_str if bm_str == "—" else f"{port_str}<br><small style='color:{SUBTEXT}'>({bm_str})</small>"
+                    cells.append(
+                        f'<td style="background:{row_bg};padding:5px 6px;border:1px solid {GRID};'
+                        f'text-align:right;font-size:12px">{display}</td>'
+                    )
+            rows_html.append(f'<tr>{"".join(cells)}</tr>')
+
+        table = f"""
+<h2 style="font-family:Inter,Arial;color:{TEXT};margin:36px 0 8px">
+  {freq} — Actual Metric Values
+</h2>
+<p style="font-family:Inter,Arial;font-size:12px;color:{SUBTEXT};margin:0 0 6px">
+  Portfolio value shown; benchmark value in parentheses.
+</p>
+<div style="overflow-x:auto">
+<table style="border-collapse:collapse;font-family:Inter,Arial,sans-serif;font-size:12px;width:100%">
+  <thead>
+    <tr>{hdr1}</tr>
+    <tr>{hdr2}</tr>
+  </thead>
+  <tbody>{"".join(rows_html)}</tbody>
+</table>
+</div>"""
+        sections.append(table)
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Portfolio — Actual Metric Values</title>
+  <style>body {{ margin: 20px 40px; background: {BG}; }}</style>
+</head>
+<body>
+<h1 style="font-family:Inter,Arial;color:{TEXT}">Portfolio — Actual Metric Values</h1>
+<p style="font-family:Inter,Arial;color:{SUBTEXT};font-size:13px">
+  Raw values from the metrics CSVs. Portfolio value / (Benchmark in parentheses).
+</p>
+{"<hr style='border:none;border-top:1px solid #E9ECEF;margin:32px 0'>".join(sections)}
+</body>
+</html>"""
+
+    Path(path).write_text(html, encoding="utf-8")
+    print(f"✓ Actual-values HTML saved →  {path}")
+
+
 # ─── Entry point ─────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     print("Running portfolio scoring system...\n")
     results_df = run_scoring()
-    save_csv(results_df,   output_path := "scoring_results.csv")
-    generate_html(results_df, "scoring_results.html")
+
+    csv_path  = OUTPUT_DIR / "scoring_results.csv"
+    html_path = OUTPUT_DIR / "scoring_results.html"
+    save_csv(results_df, str(csv_path))
+    generate_html(results_df, str(html_path))
+
+    print("\nCollecting actual metric values...")
+    actual_df   = collect_actual_values()
+    actual_csv  = OUTPUT_DIR / "actual_values.csv"
+    actual_html = OUTPUT_DIR / "actual_values.html"
+    save_actual_csv(actual_df, str(actual_csv))
+    generate_actual_html(actual_df, str(actual_html))
 
     # Console leaderboard
     summary_cols = ["model", "frequency", "ScoreTotal", "OS"] + \
                    [f"CS_{l}" for l in CRISIS_LABELS]
     available = [c for c in summary_cols if c in results_df.columns]
-    summary   = results_df[available].sort_values("ScoreTotal", ascending=False)
+    if "ScoreTotal" in results_df.columns:
+        summary = results_df[available].sort_values("ScoreTotal", ascending=False)
+    else:
+        summary = results_df[available]
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", 180)
     pd.set_option("display.float_format", "{:+.3f}".format)

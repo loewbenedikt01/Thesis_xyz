@@ -32,7 +32,7 @@ end_invest = pd.Timestamp("2025-12-31")
 # --- Directory Setup ---
 DATA_PATH = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
 prices_file = DATA_PATH / "universe_prices.parquet"
-output_dir = DATA_PATH / "results" / "data" / "random_forest"
+output_dir = DATA_PATH / "results" / "data" / f"rf_depth_{MAX_DEPTH}"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 # Load Data
