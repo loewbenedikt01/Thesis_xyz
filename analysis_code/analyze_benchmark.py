@@ -43,9 +43,9 @@ CRISIS_PERIODS = [
 
 CRISIS_METRIC_LABELS = [
     ('max_drawdown',          'Max Drawdown (%)',               '{:.2%}'),
-    ('days_to_trough',        'Days: Peak → Trough',           '{:.0f}'),
-    ('days_trough_to_recovery','Days: Trough → Breakeven',     '{:.0f}'),
-    ('days_peak_to_breakeven','Days: Peak → Breakeven (Total)','{:.0f}'),
+    ('days_to_trough',        'Days: Peak to Trough',           '{:.0f}'),
+    ('days_trough_to_recovery','Days: Trough to Breakeven',     '{:.0f}'),
+    ('days_peak_to_breakeven','Days: Peak to Breakeven (Total)','{:.0f}'),
     ('crisis_cum_return',     'Cumulative Return (Crisis)',     '{:.2%}'),
     ('crisis_ann_return',     'Annualized Return (Crisis)',     '{:.2%}'),
     ('crisis_ann_volatility', 'Annualized Volatility (Crisis)', '{:.2%}'),
