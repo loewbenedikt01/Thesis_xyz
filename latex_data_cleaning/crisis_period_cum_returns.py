@@ -7,7 +7,7 @@ OUTPUT_DIR = BASE / "latex"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 # ── Configurable frequency ──────────────────────────────────────────────────
-FREQUENCY = "Monthly"  # options: "Monthly", "Quarterly", "Semi-Annual", "Yearly"
+FREQUENCY =  "Quarterly"  # options: "Monthly", "Quarterly", "Semi-Annual", "Yearly"
 
 # ── Crisis periods (name, start, end) ───────────────────────────────────────
 CRISIS_PERIODS = [
