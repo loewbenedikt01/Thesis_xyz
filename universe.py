@@ -295,10 +295,10 @@ if __name__ == "__main__":
     meta_file_benchmark = DATA_PATH / "download_meta_benchmark.txt"
 
     if not universe_prices_file.exists():
-        print(f"Downloading {len(all_tickers)} tickers from 1992 to 2025...")
+        print(f"Downloading {len(all_tickers)} tickers from 1990 to 2025...")
         raw = yf.download(
             all_tickers,
-            start = "1992-01-01",
+            start = "1990-01-01",
             end = "2025-12-31",
             auto_adjust=True,
             progress=True,
