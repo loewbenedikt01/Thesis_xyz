@@ -1,0 +1,9 @@
+strategy,sharpe_annualised,benchmark_sharpe,z_stat,p_value,significance
+markowitz,0.4647,0.3613,1.4295,0.1528,
+markowitz_unconstrained,0.2483,0.3613,-0.7459,0.4557,
+hrp,0.5150,0.3613,2.3797,0.0173,**
+equal_weight,0.4850,0.3613,2.5392,0.0111,**
+market_cap,0.5028,0.3613,2.6044,0.0092,***
+xgboost,0.4513,0.3613,1.3730,0.1698,
+rf,0.4574,0.3613,1.4318,0.1522,
+lstm,0.4833,0.3613,1.9425,0.0521,*

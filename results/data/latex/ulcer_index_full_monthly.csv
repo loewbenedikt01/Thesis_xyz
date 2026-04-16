@@ -1,0 +1,2 @@
+period,benchmark,markowitz,markowitz_unconstrained,hrp,equal_weight,market_cap,xgboost,rf,lstm
+full_period,17.724140,17.739476,45.077232,10.298597,14.650078,17.651938,18.274326,18.950903,17.381514
