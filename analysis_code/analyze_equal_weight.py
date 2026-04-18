@@ -32,27 +32,33 @@ FREQUENCIES = {
     'Monthly': pd.DateOffset(months=1)
 }
 
-# (label, short_key, start_date, trough_date, end_date)
+# (label, short_key, window_start, trough_date, window_end)
 # Dates are S&P 500 (benchmark) defined crisis windows
+# Peak logic: max drawdown measured relative to window_start price, not all-time high
 CRISIS_PERIODS = [
-    ('Dotcom Crash',       'dotcom',  '2000-03-23', '2002-10-09', '2007-05-31'),
-    ('GFC',                'gfc',     '2007-10-09', '2009-03-09', '2013-03-28'),
-    ('Monetary Policy',    'mon_pol', '2018-09-21', '2018-12-24', '2019-04-23'),
-    ('COVID-19',           'covid19', '2020-02-19', '2020-03-23', '2020-08-12'),
-    ('Russia/Ukraine',     'russia',  '2022-01-03', '2022-10-12', '2024-01-19'),
-    ('Trade Policy Shock', 'trade',   '2025-02-19', '2025-04-08', '2025-06-26'),
+    ('Dotcom Crash',                    'dotcom',  '2000-03-23', '2002-10-09', '2007-05-31'),
+    ('GFC (Full)',                      'gfc',     '2007-10-09', '2009-03-09', '2013-03-28'),
+    ('Early Credit Crunch',             'ecc',     '2007-10-09', '2008-09-15', '2010-04-23'),
+    ('Acute GFC Crash',                 'agfc',    '2008-09-15', '2009-03-09', '2010-04-23'),
+    ('European Debt + US Debt Ceiling', 'eu_debt', '2010-04-23', '2011-10-03', '2012-03-23'),
+    ('Monetary Policy',                 'mon_pol', '2018-09-21', '2018-12-24', '2019-04-23'),
+    ('COVID-19',                        'covid19', '2020-02-19', '2020-03-23', '2020-08-12'),
+    ('Russia/Ukraine',                  'russia',  '2022-01-03', '2022-10-12', '2024-01-19'),
+    ('Trade Policy Shock',              'trade',   '2025-02-19', '2025-04-08', '2025-06-26'),
 ]
 
 CRISIS_METRIC_LABELS = [
-    ('max_drawdown',            'Max Drawdown (%)',               '{:.2%}'),
-    ('days_to_trough',          'Days: Peak to Trough',           '{:.0f}'),
-    ('days_trough_to_recovery', 'Days: Trough to Breakeven',      '{:.0f}'),
-    ('days_peak_to_breakeven',  'Days: Peak to Breakeven (Total)','{:.0f}'),
-    ('crisis_cum_return',       'Cumulative Return (Crisis)',     '{:.2%}'),
-    ('crisis_ann_return',       'Annualized Return (Crisis)',     '{:.2%}'),
-    ('crisis_ann_volatility',   'Annualized Volatility (Crisis)', '{:.2%}'),
-    ('crisis_sharpe',           'Sharpe Ratio (Crisis)',          '{:.3f}'),
-    ('crisis_sortino',          'Sortino Ratio (Crisis)',         '{:.3f}'),
+    ('max_drawdown',            'Max Drawdown (%)',                '{:.2%}'),
+    ('days_to_trough',          'Days: Peak to Trough',            '{:.0f}'),
+    ('days_trough_to_recovery', 'Days: Trough to Breakeven',       '{:.0f}'),
+    ('days_peak_to_breakeven',  'Days: Peak to Breakeven (Total)', '{:.0f}'),
+    ('crisis_cum_return',       'Cumulative Return (Crisis)',      '{:.2%}'),
+    ('crisis_ann_return',       'Annualized Return (Crisis)',      '{:.2%}'),
+    ('crisis_ann_volatility',   'Annualized Volatility (Crisis)',  '{:.2%}'),
+    ('crisis_sharpe',           'Sharpe Ratio (Crisis)',           '{:.3f}'),
+    ('crisis_sortino',          'Sortino Ratio (Crisis)',          '{:.3f}'),
+    ('crisis_calmar',           'Calmar Ratio (Crisis)',           '{:.3f}'),
+    ('crisis_ulcer_index',      'Ulcer Index (Crisis)',            '{:.4f}'),
 ]
 
 
