@@ -40,7 +40,7 @@ end_invest   = pd.Timestamp("2025-12-31")
 # ─────────────────────────────────────────────────────────────────────────────
 DATA_PATH   = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
 prices_file = DATA_PATH / "universe_prices.parquet"
-output_dir  = DATA_PATH / "results" / "data" / "market_cap_v2"
+output_dir  = DATA_PATH / "results" / "data" / "market_cap"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 all_prices = pd.read_parquet(prices_file)
