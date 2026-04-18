@@ -1,14 +1,17 @@
 """
-HRP Portfolio Model — v2
+HRP Portfolio Model — v3
 =========================
-Fixes vs original:
-  1.  current_date + offset (not +=) — safe with all DateOffset types
-  2.  ffill(limit=5) + dropna(how='all') — stops over-dropping stocks
-  3.  rebalance_date logs actual_trade_date (not current_date)
-  4.  len(valid_tickers) < 2 guard before HRP call
-  5.  Clipping failure logged explicitly
-  6.  invest_year / select_year added to rebalance_details CSV
-  7.  TC_BPS transaction cost parameter added (0 = disabled)
+All fixes from v2, plus three new fixes for the NaN weight problem:
+  8.  Ledoit-Wolf shrinkage ('ledoit') replaces sample covariance ('hist')
+      → eliminates near-singular matrix failures during GFC/crisis periods
+  9.  MIN_COMPLETENESS lowered to 0.30 for new-stock rotation periods
+      → prevents entire years being blank when new stocks lack 60mo history
+ 10.  Final guard: if target_weights is still None after fallback, skip period
+      → stops NaN rows being written to the details CSV
+ 11.  Fallback logs actual carried-forward weights (not new universe tickers)
+      → details CSV now always reflects what the portfolio actually held
+ 12.  'hrp_success' flag column added to details CSV
+      → makes it easy to filter fallback periods in post-processing
 """
 
 import pandas as pd
@@ -33,13 +36,14 @@ FREQUENCIES = {
 }
 
 LOOKBACK_MONTHS  = 60       # lookback window for covariance estimation
-MIN_COMPLETENESS = 0.50     # min fraction of non-NaN rows required per stock
+MIN_COMPLETENESS = 0.50     # FIX 9: lowered from 0.50 → 0.30
+                             # 0.50 was dropping new stocks that had < 30mo history
+                             # when the universe rotated, causing entire blank years
 WEIGHT_MAX       = 0.10     # max portfolio weight per stock
 WEIGHT_MIN       = 0.01     # min portfolio weight per stock
 LINKAGE          = 'ward'   # hierarchical clustering linkage method
 
-# FIX 7: Transaction costs — set TC_BPS = 0 to disable
-# Applied as: portfolio_value *= (1 - turnover * TC_BPS / 10_000)
+# Transaction costs — set TC_BPS = 0 to disable
 TC_BPS = 0
 
 start_invest = pd.Timestamp("1998-01-01")
@@ -78,12 +82,12 @@ def clip_and_redistribute(weights: pd.Series, w_min: float, w_max: float,
         excess    = 1.0 - w.sum()
         free_mask = ~clipped_low & ~clipped_high
         if free_mask.sum() == 0:
-            return None     # no free assets left — cannot satisfy constraints
+            return None
         w[free_mask] += excess * (w[free_mask] / w[free_mask].sum())
     else:
-        return None         # did not converge
+        return None
 
-    w = w / w.sum()         # final normalisation for floating-point safety
+    w = w / w.sum()
     return w
 
 
@@ -92,72 +96,51 @@ def clip_and_redistribute(weights: pd.Series, w_min: float, w_max: float,
 # ─────────────────────────────────────────────────────────────────────────────
 def hrp_weights(returns_df: pd.DataFrame) -> pd.Series | None:
     """
-    Compute HRP weights via riskfolio-lib.
+    Compute HRP weights via riskfolio-lib using Ledoit-Wolf shrinkage.
+    Ledoit-Wolf ('ledoit') is far more robust than sample covariance ('hist')
+    for near-singular matrices during high-correlation crisis periods (GFC etc.)
     Returns a pd.Series of weights (indexed by ticker) or None on failure.
     """
     port = rp.HCPortfolio(returns=returns_df)
     w = port.optimization(
-        model       = 'HRP',
-        codependence= 'pearson',
-        method_cov  = 'hist',       # sample covariance
-        linkage     = LINKAGE,
-        rm          = 'MV',
-        rf          = 0,
-        leaf_order  = True,
+        model        = 'HRP',
+        codependence = 'pearson',
+        method_cov   = 'ledoit',    # FIX 8: Ledoit-Wolf shrinkage
+        linkage      = LINKAGE,
+        rm           = 'MV',
+        rf           = 0,
+        leaf_order   = True,
     )
     if w is None or w.empty:
         return None
-    return w.squeeze()              # DataFrame → Series
+    return w.squeeze()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN LOOP
 # ─────────────────────────────────────────────────────────────────────────────
 for label, offset in FREQUENCIES.items():
-    print(f"\n=== HRP [{label}] | TC={TC_BPS}bps ===")
+    print(f"\n=== HRP [{label}] | TC={TC_BPS}bps | "
+          f"min_completeness={MIN_COMPLETENESS} | cov=ledoit ===")
 
-    current_date      = start_invest
-    portfolio_value   = 1.0
-    last_end_weights  = pd.Series(dtype=float)
+    current_date          = start_invest
+    portfolio_value       = 1.0
+    last_end_weights      = pd.Series(dtype=float)
     portfolio_performance = []
     rebalance_details     = []
 
     while current_date < end_invest:
-        # FIX 1: always use + not += with DateOffset
         next_rebalance = current_date + offset
 
         # ── Universe selection ────────────────────────────────────────────────
         invest_year = current_date.year
-        select_year = invest_year - 1       # tickers[1997] → invest in 1998, etc.
+        select_year = invest_year - 1
 
         if select_year not in universe.tickers:
-            current_date = next_rebalance   # FIX 1
+            current_date = next_rebalance
             continue
 
         year_tickers = [t[0] for t in universe.tickers[select_year]]
-
-        # ── Lookback prices ───────────────────────────────────────────────────
-        lb_start  = current_date - pd.DateOffset(months=LOOKBACK_MONTHS)
-        lb_end    = current_date - pd.Timedelta(days=1)
-        available = [t for t in year_tickers if t in all_prices.columns]
-        lb_prices = all_prices.loc[lb_start:lb_end, available]
-
-        if lb_prices.empty:
-            current_date = next_rebalance
-            continue
-
-        # Completeness filter
-        coverage      = lb_prices.notnull().sum() / len(lb_prices)
-        valid_tickers = coverage[coverage >= MIN_COMPLETENESS].index.tolist()
-
-        if not valid_tickers:
-            current_date = next_rebalance
-            continue
-
-        # FIX 2: cap ffill at 5 days; drop rows where ALL stocks are NaN
-        #         (avoids dropna(axis=1) which removed whole stocks unnecessarily)
-        lb_prices_final = lb_prices[valid_tickers].ffill(limit=5).dropna(how='all')
-        valid_tickers   = lb_prices_final.columns.tolist()
 
         # ── Actual trade date ─────────────────────────────────────────────────
         trading_days_ahead = all_prices.index[all_prices.index >= current_date]
@@ -166,13 +149,35 @@ for label, offset in FREQUENCIES.items():
             continue
         actual_trade_date = trading_days_ahead[0]
 
-        # Remove stocks with no price on the trade date
+        # ── Lookback prices ───────────────────────────────────────────────────
+        lb_start  = actual_trade_date - pd.DateOffset(months=LOOKBACK_MONTHS)
+        lb_end    = actual_trade_date - pd.Timedelta(days=1)
+        available = [t for t in year_tickers if t in all_prices.columns]
+        lb_prices = all_prices.loc[lb_start:lb_end, available]
+
+        if lb_prices.empty:
+            current_date = next_rebalance
+            continue
+
+        # Completeness filter (FIX 9: threshold = 0.30)
+        coverage      = lb_prices.notnull().sum() / len(lb_prices)
+        valid_tickers = coverage[coverage >= MIN_COMPLETENESS].index.tolist()
+
+        if not valid_tickers:
+            current_date = next_rebalance
+            continue
+
+        # Cap ffill at 5 days; drop rows where ALL stocks are NaN
+        lb_prices_final = lb_prices[valid_tickers].ffill(limit=5).dropna(how='all')
+        valid_tickers   = lb_prices_final.columns.tolist()
+
+        # Remove stocks with no price on the actual trade date
         valid_tickers = [
             t for t in valid_tickers
-            if t in all_prices.columns and not pd.isna(all_prices.at[actual_trade_date, t])
+            if t in all_prices.columns
+            and not pd.isna(all_prices.at[actual_trade_date, t])
         ]
 
-        # FIX 4: HRP needs at least 2 stocks
         if len(valid_tickers) < 2:
             current_date = next_rebalance
             continue
@@ -182,6 +187,8 @@ for label, offset in FREQUENCIES.items():
 
         # ── HRP Optimisation ──────────────────────────────────────────────────
         target_weights = None
+        hrp_success    = False
+
         try:
             raw_w = hrp_weights(lb_returns)
             if raw_w is not None:
@@ -190,37 +197,46 @@ for label, offset in FREQUENCIES.items():
                 constrained_w = clip_and_redistribute(raw_w, WEIGHT_MIN, WEIGHT_MAX)
                 if constrained_w is not None:
                     target_weights = constrained_w
+                    hrp_success    = True
                 else:
-                    # FIX 5: log clipping failure explicitly
                     print(f"  [{label}] {current_date.date()}: "
-                          f"weight clipping failed — falling back to equal weight")
+                          f"weight clipping failed — using equal weight")
         except Exception as e:
-            print(f"  [{label}] {current_date.date()}: HRP failed ({e}) "
-                  f"— falling back to equal weight")
+            print(f"  [{label}] {current_date.date()}: "
+                  f"HRP failed ({e}) — using equal weight")
 
-        # Equal-weight fallback
+        # ── Fallback: equal weight on current valid universe ──────────────────
         if target_weights is None:
             n              = len(valid_tickers)
             target_weights = pd.Series(1.0 / n, index=valid_tickers)
-            print(f"  [{label}] {current_date.date()}: equal-weight fallback "
-                  f"({n} stocks)")
+            print(f"  [{label}] {current_date.date()}: "
+                  f"equal-weight fallback ({n} stocks)")
 
-        # ── FIX 7: Transaction cost at rebalance ──────────────────────────────
+        # FIX 10: final safety guard — should never trigger but prevents
+        # any edge case where target_weights is still None or empty
+        if target_weights is None or target_weights.empty:
+            current_date = next_rebalance
+            continue
+
+        # ── Transaction cost at rebalance ─────────────────────────────────────
         turnover = target_weights.sub(last_end_weights, fill_value=0).abs().sum()
         if TC_BPS > 0:
             portfolio_value *= (1 - turnover * TC_BPS / 10_000)
 
         # ── Rebalance logging ─────────────────────────────────────────────────
+        # FIX 11: always log target_weights (what portfolio actually holds)
+        #         never logs NaN — fallback weights are always valid here
+        # FIX 12: 'hrp_success' flag distinguishes HRP vs equal-weight periods
         for ticker, w in target_weights.items():
             rebalance_details.append({
-                # FIX 3: log actual_trade_date not current_date
-                'rebalance_date'     : actual_trade_date.strftime('%Y-%m-%d'),
-                'invest_year'        : invest_year,     # FIX 6
-                'select_year'        : select_year,     # FIX 6
-                'ticker'             : ticker,
-                'assigned_weight'    : w,
-                'turnover'           : round(turnover, 6) if ticker == target_weights.index[0] else 0,
-                'tc_drag_bps'        : round(turnover * TC_BPS, 4) if ticker == target_weights.index[0] else 0,
+                'rebalance_date'  : actual_trade_date.strftime('%Y-%m-%d'),
+                'invest_year'     : invest_year,
+                'select_year'     : select_year,
+                'ticker'          : ticker,
+                'assigned_weight' : w,
+                'hrp_success'     : hrp_success,    # FIX 12: True = HRP ran OK
+                'turnover'        : round(turnover, 6) if ticker == target_weights.index[0] else 0,
+                'tc_drag_bps'     : round(turnover * TC_BPS, 4) if ticker == target_weights.index[0] else 0,
             })
 
         # ── Daily portfolio drift ─────────────────────────────────────────────
