@@ -61,9 +61,9 @@ EARLY_STOPPING_ROUNDS = 10
 # (not k-fold CV, which would break temporal ordering)
 # ─────────────────────────────────────────────────────────────────────────────
 PARAM_GRID = {
-    'learning_rate'     : [0.01, 0.05, 0.10, 0.20],  # step shrinkage (ν in paper)
+    'learning_rate'     : [0.05, 0.10, 0.20],  # step shrinkage (ν in paper)
     'max_depth'         : [1, 2, 3, 4],               # shallow = regularised
-    'n_estimators'      : [50, 100, 200],             # boosting rounds (B in paper)
+    'n_estimators'      : [100, 200],             # boosting rounds (B in paper)
     'reg_lambda'        : [1, 3, 5],                  # L2 on leaf weights
     'subsample'         : [0.7, 1.0],                 # row sampling per tree
     'colsample_bytree'  : [0.7, 1.0],                 # feature sampling per tree
@@ -246,22 +246,22 @@ def tune_and_predict(X_train_list, y_train_list,
     final_preds = []
     for seed in seeds:
         m = XGBRegressor(
-            objective        = 'reg:pseudohubererror',
-            n_jobs           = -1,
-            random_state     = seed,
-            verbosity        = 0,
-            learning_rate    = best_params['learning_rate'],
-            max_depth        = best_params['max_depth'],
-            n_estimators     = best_params['n_estimators'],
-            reg_lambda       = best_params['reg_lambda'],
-            subsample        = best_params['subsample'],
-            colsample_bytree = best_params['colsample_bytree'],
+            objective             = 'reg:pseudohubererror',
+            n_jobs                = -1,
+            random_state          = seed,
+            verbosity             = 0,
+            learning_rate         = best_params['learning_rate'],
+            max_depth             = best_params['max_depth'],
+            n_estimators          = best_params['n_estimators'],
+            reg_lambda            = best_params['reg_lambda'],
+            subsample             = best_params['subsample'],
+            colsample_bytree      = best_params['colsample_bytree'],
             early_stopping_rounds = early_stopping_rounds,
         )
         m.fit(
             X_es_tr, y_es_tr,
-            eval_set        = [(X_es_val, y_es_val)],
-            verbose         = False,
+            eval_set = [(X_es_val, y_es_val)],
+            verbose  = False,
         )
         final_preds.append(m.predict(current_feat))
 
@@ -384,10 +384,10 @@ for label, (offset, horizon) in FREQUENCIES.items():
                                 f"lr={best_params.get('learning_rate')} "
                                 f"depth={best_params.get('max_depth')} "
                                 f"rounds={best_params.get('n_estimators')} "
-                                f"λ={best_params.get('reg_lambda')} "
+                                f"lambda={best_params.get('reg_lambda')} "
                                 f"sub={best_params.get('subsample')} "
                                 f"col={best_params.get('colsample_bytree')} | "
-                                f"val_R²={best_val_r2:.4f}"
+                                f"val_R2={best_val_r2:.4f}"
                             )
 
         # ── Fallback ──────────────────────────────────────────────────────────
