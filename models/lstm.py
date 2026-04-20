@@ -57,7 +57,7 @@ SEQ_LEN          = 12       # monthly snapshots per LSTM sequence
 # The effective seed = BASE_SEED + RUN_NUMBER
 # This gives reproducible but distinct results per run without looping
 BASE_SEED   = 41
-RUN_NUMBER  = 1             # <── change this per execution (1, 2, 3, ...)
+RUN_NUMBER  = 4             # <── change this per execution (1, 2, 3, ...)
 RANDOM_SEED = BASE_SEED + RUN_NUMBER
 
 # FIX 14: Transaction costs — set TC_BPS = 0 to disable
@@ -82,10 +82,10 @@ PATIENCE      = 8                   # early stopping patience for final model
 BATCH_SIZE    = 32                  # smaller batch = better gradient estimates for small N
 
 FREQUENCIES = {
-    #'Yearly':      (pd.DateOffset(years=1),  252),
+    'Yearly':      (pd.DateOffset(years=1),  252),
     #'Semi-Annual': (pd.DateOffset(months=6), 126),
     #'Quarterly':   (pd.DateOffset(months=3),  63),
-    'Monthly':     (pd.DateOffset(months=1),  21),
+    #'Monthly':     (pd.DateOffset(months=1),  21),
 }
 
 start_invest = pd.Timestamp("1998-01-01")
@@ -248,7 +248,7 @@ def build_lstm(units: int, dropout_rate: float, lr: float,
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN BACKTEST LOOP
 # ─────────────────────────────────────────────────────────────────────────────
-print(f"\n=== LSTM v2 | seed={RANDOM_SEED} (base={BASE_SEED} + run={RUN_NUMBER}) ===")
+print(f"\n=== LSTM | seed={RANDOM_SEED} (base={BASE_SEED} + run={RUN_NUMBER}) ===")
 print(f"    Grid: {len(GRID_NODES)}×{len(GRID_DROPOUTS)}×{len(GRID_LR)} = "
       f"{len(GRID_NODES)*len(GRID_DROPOUTS)*len(GRID_LR)} combos | "
       f"TC={TC_BPS}bps | VAL={VAL_MONTHS}mo\n")

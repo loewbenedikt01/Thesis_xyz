@@ -161,7 +161,7 @@ MONTHS_PER_YEAR       = 12
 # Peak/drawdown logic: anchor = price on window_start, NOT all-time high.
 CRISIS_PERIODS = [
     ('Dotcom Crash',                    'dotcom',   '2000-03-23', '2002-10-09', '2007-05-31'),
-    ('GFC (Full)',                       'gfc',      '2007-10-09', '2009-03-09', '2013-03-28'),
+    ('GFC (Full)',                      'gfc',      '2007-10-09', '2009-03-09', '2013-03-28'),
     ('Early Credit Crunch',             'ecc',      '2007-10-09', '2008-09-15', '2010-04-23'),
     ('Acute GFC Crash',                 'agfc',     '2008-09-15', '2009-03-09', '2010-04-23'),
     ('European Debt + US Debt Ceiling', 'eu_debt',  '2010-04-23', '2011-10-03', '2012-03-23'),
