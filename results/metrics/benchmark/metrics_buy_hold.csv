@@ -7,11 +7,16 @@ Risk,Annualized Volatility,19.38%
 Risk,Maximum Drawdown,-56.78%
 Risk,Value at Risk (95%),-1.87%
 Risk,CVaR / Expected Shortfall,-2.96%
+Risk,Ulcer Index (Full Period),0.1772
 Ratios,Sharpe Ratio,0.374
-Ratios,Sortino Ratio,0.353
+Ratios,Sortino Ratio,0.519
 Ratios,Calmar Ratio,0.128
 Ratios,Omega Ratio,1.071
-Risk,Ulcer Index (Full Period),0.1772
+Benchmark,Beta,1.000
+Benchmark,Alpha (Annualized),0.00%
+Benchmark,Information Ratio,N/A
+Benchmark,Modified Information Ratio,N/A
+Benchmark,Treynor Ratio,0.073
 Dotcom Crash,Max Drawdown (%),-49.14%
 Dotcom Crash,Days: Peak to Trough,930
 Dotcom Crash,Days: Trough to Breakeven,1694

@@ -427,6 +427,11 @@ def named_crisis_metrics(log_returns: pd.Series, price_series: pd.Series,
     """
     results = {}
 
+    log_returns  = log_returns.copy()
+    price_series = price_series.copy()
+    log_returns.index  = pd.to_datetime(log_returns.index)
+    price_series.index = pd.to_datetime(price_series.index)
+
     for _, crisis_key, window_start, defined_trough, window_end in CRISIS_PERIODS:
         idx = price_series.index
 

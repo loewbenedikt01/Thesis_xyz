@@ -61,6 +61,8 @@ RUN_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 FREQUENCIES = {
     'Yearly':      pd.DateOffset(years=1),
     'Semi-Annual': pd.DateOffset(months=6),
+    'Quarterly': pd.DateOffset(months=3),
+    'Monthly': pd.DateOffset(months=1),
     # Quarterly and Monthly omitted for LSTM — too slow and too noisy.
     # Re-add here if you produce those run files.
 }

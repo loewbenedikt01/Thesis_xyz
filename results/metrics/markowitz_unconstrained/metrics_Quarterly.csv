@@ -1,0 +1,118 @@
+Category,Metric,Value
+Returns,Cumulative Return,2304.90%
+Returns,Annualized Return,12.05%
+Benchmark,Benchmark Cumulative Return,607.28%
+Benchmark,Benchmark Annualized Return,7.25%
+Risk,Annualized Volatility,22.91%
+Risk,Maximum Drawdown,-59.26%
+Risk,Value at Risk (95%),-2.32%
+Risk,CVaR / Expected Shortfall,-3.44%
+Risk,Ulcer Index (Full Period),0.2580
+Ratios,Sharpe Ratio,0.526
+Ratios,Sortino Ratio,0.746
+Ratios,Calmar Ratio,0.203
+Ratios,Omega Ratio,1.095
+Benchmark,Beta,0.955
+Benchmark,Alpha (Annualized),5.13%
+Benchmark,Information Ratio,0.324
+Benchmark,Modified Information Ratio,0.015
+Benchmark,Treynor Ratio,0.126
+Dotcom Crash,Max Drawdown (%),-58.40%
+Dotcom Crash,Days: Peak to Trough,851
+Dotcom Crash,Days: Trough to Breakeven,3007
+Dotcom Crash,Days: Peak to Breakeven (Total),3858
+Dotcom Crash,Cumulative Return (Crisis),-23.78%
+Dotcom Crash,Annualized Return (Crisis),-3.72%
+Dotcom Crash,Annualized Volatility (Crisis),18.72%
+Dotcom Crash,Sharpe Ratio (Crisis),-0.199
+Dotcom Crash,Sortino Ratio (Crisis),-0.278
+Dotcom Crash,Calmar Ratio (Crisis),-0.064
+Dotcom Crash,Ulcer Index (Crisis),0.4211
+GFC (Full),Max Drawdown (%),-50.72%
+GFC (Full),Days: Peak to Trough,517
+GFC (Full),Days: Trough to Breakeven,399
+GFC (Full),Days: Peak to Breakeven (Total),916
+GFC (Full),Cumulative Return (Crisis),105.73%
+GFC (Full),Annualized Return (Crisis),14.11%
+GFC (Full),Annualized Volatility (Crisis),27.49%
+GFC (Full),Sharpe Ratio (Crisis),0.513
+GFC (Full),Sortino Ratio (Crisis),0.728
+GFC (Full),Calmar Ratio (Crisis),0.278
+GFC (Full),Ulcer Index (Crisis),0.2163
+Early Credit Crunch,Max Drawdown (%),-50.72%
+Early Credit Crunch,Days: Peak to Trough,517
+Early Credit Crunch,Days: Trough to Breakeven,399
+Early Credit Crunch,Days: Peak to Breakeven (Total),916
+Early Credit Crunch,Cumulative Return (Crisis),8.48%
+Early Credit Crunch,Annualized Return (Crisis),3.26%
+Early Credit Crunch,Annualized Volatility (Crisis),33.37%
+Early Credit Crunch,Sharpe Ratio (Crisis),0.098
+Early Credit Crunch,Sortino Ratio (Crisis),0.135
+Early Credit Crunch,Calmar Ratio (Crisis),0.064
+Early Credit Crunch,Ulcer Index (Crisis),0.3085
+Acute GFC Crash,Max Drawdown (%),-32.95%
+Acute GFC Crash,Days: Peak to Trough,175
+Acute GFC Crash,Days: Trough to Breakeven,186
+Acute GFC Crash,Days: Peak to Breakeven (Total),361
+Acute GFC Crash,Cumulative Return (Crisis),40.01%
+Acute GFC Crash,Annualized Return (Crisis),23.30%
+Acute GFC Crash,Annualized Volatility (Crisis),36.69%
+Acute GFC Crash,Sharpe Ratio (Crisis),0.635
+Acute GFC Crash,Sortino Ratio (Crisis),0.889
+Acute GFC Crash,Calmar Ratio (Crisis),0.707
+Acute GFC Crash,Ulcer Index (Crisis),0.1675
+European Debt + US Debt Ceiling,Max Drawdown (%),-13.53%
+European Debt + US Debt Ceiling,Days: Peak to Trough,123
+European Debt + US Debt Ceiling,Days: Trough to Breakeven,27
+European Debt + US Debt Ceiling,Days: Peak to Breakeven (Total),150
+European Debt + US Debt Ceiling,Cumulative Return (Crisis),91.41%
+European Debt + US Debt Ceiling,Annualized Return (Crisis),40.12%
+European Debt + US Debt Ceiling,Annualized Volatility (Crisis),21.94%
+European Debt + US Debt Ceiling,Sharpe Ratio (Crisis),1.829
+European Debt + US Debt Ceiling,Sortino Ratio (Crisis),2.780
+European Debt + US Debt Ceiling,Calmar Ratio (Crisis),2.966
+European Debt + US Debt Ceiling,Ulcer Index (Crisis),0.0463
+Monetary Policy,Max Drawdown (%),-21.70%
+Monetary Policy,Days: Peak to Trough,94
+Monetary Policy,Days: Trough to Breakeven,367
+Monetary Policy,Days: Peak to Breakeven (Total),461
+Monetary Policy,Cumulative Return (Crisis),-10.70%
+Monetary Policy,Annualized Return (Crisis),-17.74%
+Monetary Policy,Annualized Volatility (Crisis),26.18%
+Monetary Policy,Sharpe Ratio (Crisis),-0.678
+Monetary Policy,Sortino Ratio (Crisis),-0.934
+Monetary Policy,Calmar Ratio (Crisis),-0.818
+Monetary Policy,Ulcer Index (Crisis),0.1159
+COVID-19,Max Drawdown (%),-26.93%
+COVID-19,Days: Peak to Trough,33
+COVID-19,Days: Trough to Breakeven,57
+COVID-19,Days: Peak to Breakeven (Total),90
+COVID-19,Cumulative Return (Crisis),23.68%
+COVID-19,Annualized Return (Crisis),54.57%
+COVID-19,Annualized Volatility (Crisis),47.06%
+COVID-19,Sharpe Ratio (Crisis),1.160
+COVID-19,Sortino Ratio (Crisis),1.633
+COVID-19,Calmar Ratio (Crisis),2.027
+COVID-19,Ulcer Index (Crisis),0.0943
+Russia/Ukraine,Max Drawdown (%),-39.90%
+Russia/Ukraine,Days: Peak to Trough,371
+Russia/Ukraine,Days: Trough to Breakeven,245
+Russia/Ukraine,Days: Peak to Breakeven (Total),616
+Russia/Ukraine,Cumulative Return (Crisis),10.40%
+Russia/Ukraine,Annualized Return (Crisis),4.97%
+Russia/Ukraine,Annualized Volatility (Crisis),26.24%
+Russia/Ukraine,Sharpe Ratio (Crisis),0.189
+Russia/Ukraine,Sortino Ratio (Crisis),0.272
+Russia/Ukraine,Calmar Ratio (Crisis),0.125
+Russia/Ukraine,Ulcer Index (Crisis),0.2270
+Trade Policy Shock,Max Drawdown (%),-22.31%
+Trade Policy Shock,Days: Peak to Trough,48
+Trade Policy Shock,Days: Trough to Breakeven,176
+Trade Policy Shock,Days: Peak to Breakeven (Total),224
+Trade Policy Shock,Cumulative Return (Crisis),-6.81%
+Trade Policy Shock,Annualized Return (Crisis),-18.10%
+Trade Policy Shock,Annualized Volatility (Crisis),31.45%
+Trade Policy Shock,Sharpe Ratio (Crisis),-0.575
+Trade Policy Shock,Sortino Ratio (Crisis),-0.778
+Trade Policy Shock,Calmar Ratio (Crisis),-0.811
+Trade Policy Shock,Ulcer Index (Crisis),0.1206

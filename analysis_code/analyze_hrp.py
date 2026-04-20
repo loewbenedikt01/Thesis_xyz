@@ -73,7 +73,7 @@ all_divs = []
 
 for freq_name in FREQUENCIES:
 
-    csv_path = DATA_DIR / f"portfolio_{freq_name}.csv"
+    csv_path = DATA_DIR / f"portfolio_hrp_{freq_name}.csv"
     if not csv_path.exists():
         print(f"Skipping {freq_name}: file not found at {csv_path}")
         continue

@@ -12,7 +12,6 @@ Place metrics.py in the project root (Thesis_xyz/) so the import works.
 
 import sys
 import pandas as pd
-import numpy as np
 import plotly.graph_objects as go
 from pathlib import Path
 
@@ -60,53 +59,28 @@ FREQUENCIES = {
 # ─────────────────────────────────────────────────────────────────────────────
 # RF-SPECIFIC: MULTI-RUN LOADERS
 # ─────────────────────────────────────────────────────────────────────────────
-def load_and_average_runs(freq_name: str):
+def load_runs(freq_name: str):
     """
-    Discover all portfolio_rf_{freq}_{run}.csv files, average log_return
-    across runs on common dates, recompute cumulative_value.
-    Returns (df, n_runs). df has columns: log_return, cumulative_value.
+    Load portfolio_rf_{freq}.csv (already averaged by the model).
+    Returns (df, 1) or (None, 0) if missing.
     """
-    dfs, run = [], 1
-    while True:
-        p = DATA_DIR / f"portfolio_rf_{freq_name}_{run}.csv"
-        if not p.exists():
-            break
-        df = pd.read_csv(p, index_col='date', parse_dates=True).sort_index()
-        df = df.loc[start_date:end_date].dropna(subset=['log_return'])
-        dfs.append(df['log_return'])
-        run += 1
-    if not dfs:
+    p = DATA_DIR / f"portfolio_rf_{freq_name}.csv"
+    if not p.exists():
         return None, 0
-    avg_log = pd.concat(dfs, axis=1).mean(axis=1).dropna()
-    avg_cum = np.exp(avg_log.cumsum())
-    avg_df  = pd.DataFrame({'log_return': avg_log, 'cumulative_value': avg_cum})
-    return avg_df, len(dfs)
+    df = pd.read_csv(p, index_col='date', parse_dates=True).sort_index()
+    df = df.loc[start_date:end_date].dropna(subset=['log_return'])
+    return df[['log_return', 'cumulative_value']], 1
 
 
-def load_and_average_stats(freq_name: str):
+def load_stats(freq_name: str):
     """
-    Discover all portfolio_rf_{freq}_{run}_statistics.csv files, average
-    numeric prediction quality columns per rebalance_date across runs.
-    Returns averaged DataFrame or None.
+    Load portfolio_rf_{freq}_statistics.csv (already averaged by the model).
+    Returns DataFrame or None if missing.
     """
-    STAT_COLS = [
-        'best_learning_rate', 'best_max_depth', 'best_reg_lambda',
-        'best_n_estimators', 'best_gamma',
-        'RMSE', 'MSE', 'MAE', 'R_squared', 'Spearman',
-        'Directional_Accuracy', 'Geometric_Score',
-    ]
-    dfs, run = [], 1
-    while True:
-        p = DATA_DIR / f"portfolio_rf_{freq_name}_{run}_statistics.csv"
-        if not p.exists():
-            break
-        dfs.append(pd.read_csv(p, parse_dates=['rebalance_date']))
-        run += 1
-    if not dfs:
+    p = DATA_DIR / f"portfolio_rf_{freq_name}_statistics.csv"
+    if not p.exists():
         return None
-    combined = pd.concat(dfs, ignore_index=True)
-    existing = [c for c in STAT_COLS if c in combined.columns]
-    return combined.groupby('rebalance_date')[existing].mean().reset_index()
+    return pd.read_csv(p, parse_dates=['rebalance_date'])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -131,7 +105,8 @@ def generate_rf_statistics_report(stats_df: pd.DataFrame, freq_name: str) -> str
         'RMSE'                : ('RMSE',                 False, '#1D6FA4'),
         'MSE'                 : ('MSE',                  False, '#7C3AED'),
         'MAE'                 : ('MAE',                  False, '#D97706'),
-        'R_squared'           : ('R²',                   True,  '#16A34A'),
+        'R2_rank'             : ('R² (rank)',             True,  '#16A34A'),
+        'R2_raw_vs_zero'      : ('R²oos vs zero',         True,  '#84CC16'),
         'Spearman'            : ('Spearman Correlation',  True,  '#DC2626'),
         'Directional_Accuracy': ('Directional Accuracy', True,  '#0891B2'),
         'Geometric_Score'     : ('Geometric Score',       True,  '#059669'),
@@ -222,12 +197,12 @@ all_divs = []
 
 for freq_name in FREQUENCIES:
 
-    # ── Load & average runs ───────────────────────────────────────────────────
-    df_port, n_runs = load_and_average_runs(freq_name)
+    # ── Load portfolio ────────────────────────────────────────────────────────
+    df_port, _ = load_runs(freq_name)
     if df_port is None:
         print(f"Skipping {freq_name}: no run files found.")
         continue
-    print(f"[{freq_name}] Loaded & averaged {n_runs} run(s).")
+    print(f"[{freq_name}] Loaded.")
 
     log_ret   = df_port['log_return']
     price_ser = df_port['cumulative_value']
@@ -248,25 +223,22 @@ for freq_name in FREQUENCIES:
     print(f"[{freq_name}] Metrics exported.")
 
     # ── Step 3: load, average, export statistics ──────────────────────────────
-    stats_df = load_and_average_stats(freq_name)
+    stats_df = load_stats(freq_name)
     if stats_df is not None:
         stats_file = output_dir_metrics / f"statistics_{freq_name}.csv"
         stats_df.to_csv(stats_file, index=False)
         print(f"[{freq_name}] Statistics exported.")
 
     # ── Step 4: build HTML sections ───────────────────────────────────────────
-    run_label = f"avg of {n_runs} run{'s' if n_runs > 1 else ''}"
-
     section_title = (
         f'<h2 style="font-family:Inter,Arial,sans-serif;color:#1E293B;'
-        f'margin:40px 0 8px 70px">RandomForest  ·  {freq_name} Rebalancing  '
-        f'<small style="font-size:0.6em;color:#64748B">({run_label})</small></h2>'
+        f'margin:40px 0 8px 70px">RandomForest  ·  {freq_name} Rebalancing</h2>'
     )
 
     div = generate_dynamic_benchmark_report(
         portfolio_df        = df_port,
         precomputed_results = results,
-        title               = f"RandomForest  ·  {freq_name} Rebalancing  ({run_label})",
+        title               = f"RandomForest  ·  {freq_name} Rebalancing",
         threshold           = threshold_val,
     )
 
