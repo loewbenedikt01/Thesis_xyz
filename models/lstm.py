@@ -71,20 +71,20 @@ L2_LAMBDA = 1e-4
 # FIX 6: Expanded hyperparameter grid
 # 3 node sizes × 3 dropout rates × 2 learning rates = 18 combinations
 # ─────────────────────────────────────────────────────────────────────────────
-GRID_NODES    = [16, 32, 64]        # LSTM hidden units
-GRID_DROPOUTS = [0.1, 0.2, 0.3]    # dropout rate after LSTM
+GRID_NODES    = [16, 32]           # LSTM hidden units
+GRID_DROPOUTS = [0.1, 0.3]         # dropout rate after LSTM
 GRID_LR       = [0.001, 0.01]      # Adam initial learning rate
 
-GRID_EPOCHS   = 20                  # max epochs per grid combo
-GRID_PATIENCE = 4                   # early stopping patience during grid search
-FULL_EPOCHS   = 60                  # max epochs for final model
-PATIENCE      = 10                  # early stopping patience for final model
+GRID_EPOCHS   = 10                  # max epochs per grid combo
+GRID_PATIENCE = 3                   # early stopping patience during grid search
+FULL_EPOCHS   = 50                  # max epochs for final model
+PATIENCE      = 8                   # early stopping patience for final model
 BATCH_SIZE    = 32                  # smaller batch = better gradient estimates for small N
 
 FREQUENCIES = {
-    'Yearly':      (pd.DateOffset(years=1),  252),
-    'Semi-Annual': (pd.DateOffset(months=6), 126),
-    'Quarterly':   (pd.DateOffset(months=3),  63),
+    #'Yearly':      (pd.DateOffset(years=1),  252),
+    #'Semi-Annual': (pd.DateOffset(months=6), 126),
+    #'Quarterly':   (pd.DateOffset(months=3),  63),
     'Monthly':     (pd.DateOffset(months=1),  21),
 }
 
@@ -270,6 +270,10 @@ for label, (offset, horizon) in FREQUENCIES.items():
         if valid_days.empty:
             break
         actual_trade_date = valid_days[0]
+
+        # Clear TF session at the start of every rebalance to prevent state accumulation
+        tf.keras.backend.clear_session()
+        gc.collect()
 
         # FIX 1: always initialise before any conditional block
         target_weights = None
@@ -624,7 +628,13 @@ for label, (offset, horizon) in FREQUENCIES.items():
     )
     print(f"\n  [{label}] Run {RUN_NUMBER} done — saved to {output_dir}")
 
-# ── Full memory reset ─────────────────────────────────────────────────────────
+    # Hard reset between frequencies to prevent TF state accumulation
+    tf.keras.backend.clear_session()
+    gc.collect(0)
+    gc.collect(1)
+    gc.collect(2)
+
+# ── Final cleanup ─────────────────────────────────────────────────────────────
 tf.keras.backend.clear_session()
 gc.collect()
 print(f"\n=== LSTM v2 complete | run={RUN_NUMBER} seed={RANDOM_SEED} ===")
