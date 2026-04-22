@@ -309,9 +309,9 @@ def build_freq_csv(freq_label, out_name, bm_returns, w_vix):
         to_unified(rank_df,   "method", MODEL_KEYS,  all_cols),
     ], ignore_index=True)
 
-    out_path = os.path.join(OUT_DIR, f"crisis_ranking_{out_name}.csv")
+    out_path = os.path.join(OUT_DIR, f"z_score_crisis_{out_name}.csv")
     result.to_csv(out_path, index=False, float_format="%.6f")
-    print(f"  Saved crisis_ranking_{out_name}.csv")
+    print(f"  Saved z_score_crisis_{out_name}.csv")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

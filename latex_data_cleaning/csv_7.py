@@ -49,9 +49,9 @@ def build_freq_csv(freq_label, out_name):
         return
 
     combined = combined.sort_index().reset_index().rename(columns={"date": "date"})
-    out_path = os.path.join(OUT_DIR, f"cum_returns_{out_name}.csv")
+    out_path = os.path.join(OUT_DIR, f"cum_log_returns_{out_name}.csv")
     combined.to_csv(out_path, index=False, float_format="%.6f")
-    print(f"Saved cum_returns_{out_name}.csv  ({len(combined)} rows, {len(combined.columns)} cols)")
+    print(f"Saved cum_log_returns_{out_name}.csv  ({len(combined)} rows, {len(combined.columns)} cols)")
 
 
 os.makedirs(OUT_DIR, exist_ok=True)

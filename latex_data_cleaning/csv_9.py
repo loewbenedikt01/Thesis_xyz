@@ -14,26 +14,8 @@ FREQ_FILE_MAP = {
     "annual":      "statistics_Yearly.csv",
 }
 
-AGG = {
-    "Directional_Accuracy": ["mean", "min", "max"],
-    "Spearman":              ["mean"],
-    "MAE":                   ["mean", "std"],
-    "R2_rank":               ["mean", "std"],
-}
 
-COL_RENAME = {
-    "Directional_Accuracy_mean": "da_mean",
-    "Directional_Accuracy_min":  "da_min",
-    "Directional_Accuracy_max":  "da_max",
-    "Spearman_mean":             "spearman_mean",
-    "MAE_mean":                  "mae_mean",
-    "MAE_std":                   "mae_sd",
-    "R2_rank_mean":              "r2_rank_mean",
-    "R2_rank_std":               "r2_rank_sd",
-}
-
-
-def load_and_aggregate(model: str, filename: str) -> pd.DataFrame | None:
+def load_da(model: str, filename: str) -> pd.DataFrame | None:
     if model == "lstm":
         freq_label = filename.replace("statistics_", "").replace(".csv", "")
         path = os.path.join(BASE, "data", "lstm", f"portfolio_lstm_{freq_label}_statistics.csv")
@@ -43,25 +25,19 @@ def load_and_aggregate(model: str, filename: str) -> pd.DataFrame | None:
     if not os.path.exists(path):
         return None
 
-    df = pd.read_csv(path)
-    # aggregate each metric over the full sample
-    rows = {}
-    for col, stats in AGG.items():
-        if col not in df.columns:
-            continue
-        for stat in stats:
-            rows[f"{col}_{stat}"] = df[col].agg(stat)
-
-    result = pd.DataFrame([{"date": "overall", **rows}])
-    result = result.rename(columns=COL_RENAME)
-    result = result.rename(columns={c: f"{c}_{model}" for c in result.columns if c != "date"})
-    return result
+    df = pd.read_csv(path, parse_dates=["rebalance_date"])
+    return (
+        df[["rebalance_date", "Directional_Accuracy"]]
+        .rename(columns={"rebalance_date": "date", "Directional_Accuracy": f"da_{model}"})
+        .sort_values("date")
+        .reset_index(drop=True)
+    )
 
 
 def build_freq_csv(freq: str, filename: str) -> None:
     merged = None
     for model in MODELS:
-        df = load_and_aggregate(model, filename)
+        df = load_da(model, filename)
         if df is None:
             print(f"  [{model}] {filename} not found — skipping")
             continue
@@ -71,9 +47,10 @@ def build_freq_csv(freq: str, filename: str) -> None:
         print(f"No data for {freq}, skipping.")
         return
 
-    out_path = os.path.join(OUT_DIR, f"ml_stats_{freq}.csv")
+    merged = merged.sort_values("date").reset_index(drop=True)
+    out_path = os.path.join(OUT_DIR, f"ml_da_daily_{freq}.csv")
     merged.to_csv(out_path, index=False, float_format="%.6f")
-    print(f"Saved ml_stats_{freq}.csv  ({len(merged)} rows, {len(merged.columns)} cols)")
+    print(f"Saved ml_da_daily_{freq}.csv  ({len(merged)} rows)")
 
 
 os.makedirs(OUT_DIR, exist_ok=True)

@@ -178,9 +178,9 @@ def build_freq_csv(freq_label, out_name):
         columns=all_cols,
     )
 
-    out_path = os.path.join(OUT_DIR, f"model_performance_{out_name}.csv")
+    out_path = os.path.join(OUT_DIR, f"z_scores_overall_{out_name}.csv")
     result.to_csv(out_path, index=False, float_format="%.6f")
-    print(f"Saved model_performance_{out_name}.csv")
+    print(f"Saved z_scores_overall_{out_name}.csv")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

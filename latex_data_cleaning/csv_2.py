@@ -128,9 +128,9 @@ def build_freq_csv(freq_label: str, out_name: str) -> None:
         rows.append(row)
 
     result = pd.DataFrame(rows)
-    out_path = os.path.join(OUT_DIR, f"crisis_{out_name}.csv")
+    out_path = os.path.join(OUT_DIR, f"ml_crisis_{out_name}.csv")
     result.to_csv(out_path, index=False, float_format="%.6f")
-    print(f"Saved crisis_{out_name}.csv  ({len(result)} rows)")
+    print(f"Saved ml_crisis_{out_name}.csv  ({len(result)} rows)")
 
 
 os.makedirs(OUT_DIR, exist_ok=True)
