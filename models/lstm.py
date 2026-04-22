@@ -43,10 +43,10 @@ if project_root not in sys.path:
 import universe
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CONFIGURATION
+# CONFIGURATION Fischer and Krauss 2018 Methodology
 # ─────────────────────────────────────────────────────────────────────────────
-TRAIN_MONTHS     = 60       # training lookback in months
-VAL_MONTHS       = 24       # FIX 4: extended from 12 → 24 months
+TRAIN_MONTHS     = 36       # training lookback in months as fischer and krauss
+VAL_MONTHS       = 12       # put to 1 year, as fischer and frauss
 MIN_COMPLETENESS = 0.50     # min fraction of non-NaN rows per ticker
 WEIGHT_MAX       = 0.10     # max portfolio weight per stock
 WEIGHT_MIN       = 0.01     # min portfolio weight per stock
@@ -57,7 +57,7 @@ SEQ_LEN          = 12       # monthly snapshots per LSTM sequence
 # The effective seed = BASE_SEED + RUN_NUMBER
 # This gives reproducible but distinct results per run without looping
 BASE_SEED   = 41
-RUN_NUMBER  = 3             # <── change this per execution (1, 2, 3, ...)
+RUN_NUMBER  = 8             # <── change this per execution (1, 2, 3, ...)
 RANDOM_SEED = BASE_SEED + RUN_NUMBER
 
 # FIX 14: Transaction costs — set TC_BPS = 0 to disable
@@ -71,21 +71,23 @@ L2_LAMBDA = 1e-4
 # FIX 6: Expanded hyperparameter grid4``
 # 3 node sizes × 3 dropout rates × 2 learning rates = 18 combinations
 # ─────────────────────────────────────────────────────────────────────────────
-GRID_NODES    = [16, 32]           # LSTM hidden units
-GRID_DROPOUTS = [0.1, 0.3]         # dropout rate after LSTM
-GRID_LR       = [0.001, 0.01]      # Adam initial learning rate
+GRID_NODES    = [16, 32]            # LSTM hidden units
+GRID_LR       = [0.001, 0.01]       # Adam initial learning rate
+BATCH_SIZE    = [32, 64]            # smaller batch = better gradient estimates for small N
 
+
+RECURRENT_DROPOUT = 0.1
+GRID_DROPOUTS = 0.2                 # dropout rate after LSTM
 GRID_EPOCHS   = 10                  # max epochs per grid combo
 GRID_PATIENCE = 3                   # early stopping patience during grid search
 FULL_EPOCHS   = 50                  # max epochs for final model
 PATIENCE      = 8                   # early stopping patience for final model
-BATCH_SIZE    = 32                  # smaller batch = better gradient estimates for small N
 
 FREQUENCIES = {
-    #'Yearly':      (pd.DateOffset(years=1),  252),
+    'Yearly':      (pd.DateOffset(years=1),  252),
     #'Semi-Annual': (pd.DateOffset(months=6), 126),
     #'Quarterly':   (pd.DateOffset(months=3),  63),
-    'Monthly':     (pd.DateOffset(months=1),  21),
+    #'Monthly':     (pd.DateOffset(months=1),  21),
 }
 
 start_invest = pd.Timestamp("1998-01-01")
@@ -256,12 +258,13 @@ print(f"    Grid: {len(GRID_NODES)}×{len(GRID_DROPOUTS)}×{len(GRID_LR)} = "
 for label, (offset, horizon) in FREQUENCIES.items():
     print(f"\n=== [{label}] horizon={horizon}d ===")
 
-    current_date          = start_invest
-    portfolio_value       = 1.0
-    last_end_weights      = pd.Series(dtype=float)
-    portfolio_performance = []
-    rebalance_details     = []
-    model_stats           = []
+    current_date               = start_invest
+    portfolio_value            = 1.0
+    last_end_weights           = pd.Series(dtype=float)
+    portfolio_performance      = []
+    rebalance_details          = []
+    model_stats                = []
+    feature_importance_records = []
 
     while current_date < end_invest:
         next_rebalance = current_date + offset
@@ -279,8 +282,8 @@ for label, (offset, horizon) in FREQUENCIES.items():
         target_weights = None
         pred_series    = None
         best_nodes     = GRID_NODES[0]
-        best_dropout   = GRID_DROPOUTS[0]
         best_lr        = GRID_LR[0]
+        best_batch     = BATCH_SIZE[0]
         best_val_loss  = np.nan
 
         # FIX 5: explicit universe year logic
@@ -304,14 +307,16 @@ for label, (offset, horizon) in FREQUENCIES.items():
 
                 if len(valid_tickers) >= 2:
                     # FIX 3: cap ffill at 5 consecutive days
-                    train_prices   = hist_prices[valid_tickers].ffill(limit=5)
-                    val_start_date = actual_trade_date - pd.DateOffset(months=VAL_MONTHS)
-                    val_split      = int(np.searchsorted(train_prices.index, val_start_date))
+                    train_prices     = hist_prices[valid_tickers].ffill(limit=5)
+                    val_start_date   = actual_trade_date - pd.DateOffset(months=VAL_MONTHS)
+                    train_start_date = actual_trade_date - pd.DateOffset(months=TRAIN_MONTHS + VAL_MONTHS)
+                    val_split        = int(np.searchsorted(train_prices.index, val_start_date))
+                    train_start_idx  = max(260, int(np.searchsorted(train_prices.index, train_start_date)))
 
                     # ── Build monthly snapshots ───────────────────────────────
                     train_snapshots, val_snapshots = [], []
 
-                    for i in range(260, val_split, 21):
+                    for i in range(train_start_idx, val_split, 21):
                         feat = create_features(train_prices.iloc[:i])
                         if not feat.empty:
                             train_snapshots.append((i, feat))
@@ -367,10 +372,10 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         best_val_loss_grid = np.inf
 
                         for g_node in GRID_NODES:
-                            for g_drop in GRID_DROPOUTS:
-                                for g_lr in GRID_LR:
+                            for g_lr in GRID_LR:
+                                for g_batch in BATCH_SIZE:
                                     g_model = build_lstm(
-                                        g_node, g_drop, g_lr, SEQ_LEN, n_features
+                                        g_node, GRID_DROPOUTS, g_lr, SEQ_LEN, n_features
                                     )
                                     callbacks = [
                                         EarlyStopping(
@@ -378,7 +383,6 @@ for label, (offset, horizon) in FREQUENCIES.items():
                                             patience=GRID_PATIENCE,
                                             restore_best_weights=True,
                                         ),
-                                        # FIX 11: LR scheduler during grid search
                                         ReduceLROnPlateau(
                                             monitor='val_loss' if has_val else 'loss',
                                             factor=0.5, patience=2, min_lr=1e-5,
@@ -388,7 +392,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
                                         X_tr, y_tr,
                                         validation_data = (X_vl, y_vl) if has_val else None,
                                         epochs          = GRID_EPOCHS,
-                                        batch_size      = BATCH_SIZE,
+                                        batch_size      = g_batch,
                                         callbacks       = callbacks,
                                         verbose         = 0,
                                     )
@@ -397,9 +401,9 @@ for label, (offset, horizon) in FREQUENCIES.items():
 
                                     if g_loss < best_val_loss_grid:
                                         best_val_loss_grid = g_loss
-                                        best_nodes   = g_node
-                                        best_dropout = g_drop
-                                        best_lr      = g_lr
+                                        best_nodes    = g_node
+                                        best_lr       = g_lr
+                                        best_batch    = g_batch
                                         best_val_loss = g_loss
 
                                     del g_model
@@ -408,7 +412,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         print(
                             f"  [{label}] {current_date.date()} | "
                             f"universe={select_year} ({len(valid_tickers)} stocks) | "
-                            f"best: nodes={best_nodes} drop={best_dropout} "
+                            f"best: nodes={best_nodes} batch={best_batch} "
                             f"lr={best_lr} | val_loss={best_val_loss:.5f}"
                         )
 
@@ -418,7 +422,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         y_full = np.concatenate([y_tr, y_vl], axis=0) if has_val else y_tr
 
                         final_model = build_lstm(
-                            best_nodes, best_dropout, best_lr, SEQ_LEN, n_features
+                            best_nodes, GRID_DROPOUTS, best_lr, SEQ_LEN, n_features
                         )
                         final_callbacks = [
                             EarlyStopping(
@@ -435,7 +439,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         final_model.fit(
                             X_full, y_full,
                             epochs     = FULL_EPOCHS,
-                            batch_size = BATCH_SIZE,
+                            batch_size = best_batch,
                             callbacks  = final_callbacks,
                             verbose    = 0,
                         )
@@ -475,6 +479,18 @@ for label, (offset, horizon) in FREQUENCIES.items():
                                 target_weights = allocate_weights(
                                     pred_series, WEIGHT_MIN, WEIGHT_MAX
                                 )
+
+                                # gradient-based feature attribution (|∂output/∂input|)
+                                X_tensor = tf.constant(X_pred, dtype=tf.float32)
+                                with tf.GradientTape() as tape:
+                                    tape.watch(X_tensor)
+                                    out = final_model(X_tensor, training=False)
+                                grads   = tape.gradient(out, X_tensor).numpy()
+                                fi_vals = np.abs(grads).mean(axis=(0, 1))
+                                fi_vals = fi_vals / (fi_vals.sum() + 1e-12)
+                                fi_row  = {'rebalance_date': actual_trade_date.strftime('%Y-%m-%d')}
+                                fi_row.update(dict(zip(pred_snapshots[-1].columns.tolist(), fi_vals)))
+                                feature_importance_records.append(fi_row)
 
                         # ── Cleanup ───────────────────────────────────────────
                         del final_model, X_tr, y_tr, X_full, y_full
@@ -523,7 +539,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
                 'turnover'       : round(turnover, 6) if ticker == target_weights.index[0] else 0,
                 'tc_drag_bps'    : round(turnover * TC_BPS, 4) if ticker == target_weights.index[0] else 0,
                 'best_nodes'     : best_nodes,
-                'best_dropout'   : best_dropout,
+                'best_batch'     : best_batch,
                 'best_lr'        : best_lr,
                 'best_val_loss'  : round(best_val_loss, 6) if not np.isnan(best_val_loss) else np.nan,
                 'run_number'     : RUN_NUMBER,
@@ -597,7 +613,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         'seed'                : RANDOM_SEED,
                         'n_stocks'            : len(common_idx),
                         'best_nodes'          : best_nodes,
-                        'best_dropout'        : best_dropout,
+                        'best_batch'          : best_batch,
                         'best_lr'             : best_lr,
                         'best_val_loss'       : best_val_loss,
                         'RMSE'                : float(np.sqrt(np.mean((y_pred - y_true_rank)**2))),
@@ -625,6 +641,9 @@ for label, (offset, horizon) in FREQUENCIES.items():
     )
     pd.DataFrame(model_stats).to_csv(
         output_dir / f"portfolio_lstm_{tag}_statistics.csv", index=False
+    )
+    pd.DataFrame(feature_importance_records).to_csv(
+        output_dir / f"feature_importance_lstm_{tag}.csv", index=False
     )
     print(f"\n  [{label}] Run {RUN_NUMBER} done — saved to {output_dir}")
 

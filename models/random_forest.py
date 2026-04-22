@@ -27,7 +27,7 @@ if project_root not in sys.path:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ─────────────────────────────────────────────────────────────────────────────
-TRAIN_MONTHS     = 60       # training lookback in months
+TRAIN_MONTHS     = 36       # training lookback in months
 VAL_MONTHS       = 24       # FIX 4: extended from 12 → 24 months
 MIN_COMPLETENESS = 0.50     # min fraction of non-NaN rows required per ticker
 WEIGHT_MAX       = 0.10     # max portfolio weight per stock
@@ -43,16 +43,17 @@ TC_BPS = 0   # <-- change this value; 0 = no costs, 10 = 10bps, 30 = 30bps
 
 # Hyperparameter search grid — all combinations evaluated each period
 PARAM_GRID = {
-    'max_depth'       : [1, 2, 3, 4, 5],
+    'max_depth'       : [1, 2, 5],
     'n_estimators'    : [100, 135, 200],
-    'min_samples_leaf': [2, 3, 4, 5],
+    'min_samples_leaf': [1, 2, 3, 4, 5],
+    'max_features'    : ['sqrt', 0.5],
 }
 
 FREQUENCIES = {
     'Yearly':      (pd.DateOffset(years=1),  252),
-    'Semi-Annual': (pd.DateOffset(months=6), 126),
-    'Quarterly':   (pd.DateOffset(months=3),  63),
-    'Monthly':     (pd.DateOffset(months=1),  21),
+    #'Semi-Annual': (pd.DateOffset(months=6), 126),
+    #'Quarterly':   (pd.DateOffset(months=3),  63),
+    #'Monthly':     (pd.DateOffset(months=1),  21),
 }
 
 start_invest = pd.Timestamp("1998-01-01")
@@ -224,7 +225,7 @@ def tune_and_predict(X_train_list, y_train_list,
                 n_estimators     = params['n_estimators'],
                 max_depth        = params['max_depth'],
                 min_samples_leaf = params['min_samples_leaf'],
-                max_features     = 'sqrt',
+                max_features     = params['max_features'],
                 n_jobs           = -1,
                 random_state     = seed,
             )
@@ -242,23 +243,27 @@ def tune_and_predict(X_train_list, y_train_list,
 
     # ── Final model: retrain best config on train + val, seed ensemble ───────
     final_preds = []
+    fi_accum    = []
     for seed in seeds:
         m = RandomForestRegressor(
             n_estimators     = best_params['n_estimators'],
             max_depth        = best_params['max_depth'],
             min_samples_leaf = best_params['min_samples_leaf'],
-            max_features     = 'sqrt',
+            max_features     = best_params['max_features'],
             n_jobs           = -1,
             random_state     = seed,
         )
         m.fit(X_all, y_all)
         final_preds.append(m.predict(current_feat))
+        fi_accum.append(m.feature_importances_)
 
     avg_final   = np.mean(final_preds, axis=0)
     pred_series = pd.Series(avg_final, index=current_feat.index).sort_values(
         ascending=False
     )
-    return pred_series, best_params, best_val_r2
+    mean_fi    = np.mean(fi_accum, axis=0)
+    feat_names = list(current_feat.columns)
+    return pred_series, best_params, best_val_r2, mean_fi, feat_names
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -273,12 +278,13 @@ for label, (offset, horizon) in FREQUENCIES.items():
         f"TC={TC_BPS}bps ==="
     )
 
-    current_date          = start_invest
-    portfolio_value       = 1.0
-    last_end_weights      = pd.Series(dtype=float)
-    portfolio_performance = []
-    rebalance_details     = []
-    model_stats           = []
+    current_date               = start_invest
+    portfolio_value            = 1.0
+    last_end_weights           = pd.Series(dtype=float)
+    portfolio_performance      = []
+    rebalance_details          = []
+    model_stats                = []
+    feature_importance_records = []
 
     while current_date < end_invest:
         next_rebalance = current_date + offset
@@ -322,15 +328,16 @@ for label, (offset, horizon) in FREQUENCIES.items():
                     train_prices = hist_prices[valid_tickers].ffill(limit=5)
 
                     # Temporal split index
-                    val_start_date = actual_trade_date - pd.DateOffset(months=VAL_MONTHS)
-                    val_split      = int(np.searchsorted(train_prices.index,
-                                                         val_start_date))
+                    val_start_date   = actual_trade_date - pd.DateOffset(months=VAL_MONTHS)
+                    train_start_date = actual_trade_date - pd.DateOffset(months=TRAIN_MONTHS + VAL_MONTHS)
+                    val_split        = int(np.searchsorted(train_prices.index, val_start_date))
+                    train_start_idx  = max(260, int(np.searchsorted(train_prices.index, train_start_date)))
 
                     X_train_list, y_train_list = [], []
                     X_val_list,   y_val_list   = [], []
 
-                    # Training samples (step every 21 days ≈ monthly)
-                    for i in range(260, val_split - horizon, 21):
+                    # Training samples — rolling window: only [train_start_idx, val_split)
+                    for i in range(train_start_idx, val_split - horizon, 21):
                         feat    = create_features(train_prices.iloc[:i])
                         if feat.empty:
                             continue
@@ -364,11 +371,14 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         current_feat = create_features(train_prices)
 
                         if not current_feat.empty:
-                            pred_series, best_params, best_val_r2 = tune_and_predict(
+                            pred_series, best_params, best_val_r2, fi_values, fi_names = tune_and_predict(
                                 X_train_list, y_train_list,
                                 X_val_list,   y_val_list,
                                 current_feat, PARAM_GRID, SEEDS,
                             )
+                            fi_row = {'rebalance_date': actual_trade_date.strftime('%Y-%m-%d')}
+                            fi_row.update(dict(zip(fi_names, fi_values)))
+                            feature_importance_records.append(fi_row)
                             target_weights = allocate_weights(
                                 pred_series, WEIGHT_MIN, WEIGHT_MAX
                             )
@@ -519,5 +529,8 @@ for label, (offset, horizon) in FREQUENCIES.items():
     )
     pd.DataFrame(model_stats).to_csv(
         output_dir / f"portfolio_rf_{label}_statistics.csv", index=False
+    )
+    pd.DataFrame(feature_importance_records).to_csv(
+        output_dir / f"feature_importance_rf_{label}.csv", index=False
     )
     print(f"\n  [{label}] Done — saved to {output_dir}")

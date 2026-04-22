@@ -40,8 +40,10 @@ import universe
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
-TRAIN_MONTHS     = 60       # training lookback in months
-VAL_MONTHS       = 24       # holdout validation window in months
+TRAIN_MONTHS_MONTHLY     = 9       # training lookback in months
+VAL_MONTHS_MONTHLY       = 3       # holdout validation window in months
+TRAIN_MONTHS_OTHERS     = 36       # training lookback in months
+VAL_MONTHS_OTHERS       = 24       # holdout validation window in months
 MIN_COMPLETENESS = 0.50     # min fraction of non-NaN rows per ticker
 WEIGHT_MAX       = 0.10     # max portfolio weight per stock
 WEIGHT_MIN       = 0.01     # min portfolio weight per stock
@@ -61,21 +63,21 @@ EARLY_STOPPING_ROUNDS = 10
 # (not k-fold CV, which would break temporal ordering)
 # ─────────────────────────────────────────────────────────────────────────────
 PARAM_GRID = {
-    'learning_rate'     : [0.05, 0.10, 0.20],  # step shrinkage (ν in paper)
-    'max_depth'         : [1, 2, 3, 4],               # shallow = regularised
-    'n_estimators'      : [100, 200],             # boosting rounds (B in paper)
+    'learning_rate'     : [0.05, 0.10, 0.3],          # step shrinkage (ν in paper)
+    'max_depth'         : [1, 2, 5],                  # shallow = regularised
+    'min_child_weight'  : [1, 5, 10],
+    'gamma'             : [0, 0.5],
+    'n_estimators'      : [100, 135, 200],            # boosting rounds (B in paper)
     'reg_lambda'        : [1, 3, 5],                  # L2 on leaf weights
-    'subsample'         : [0.7, 1.0],                 # row sampling per tree
-    'colsample_bytree'  : [0.7, 1.0],                 # feature sampling per tree
+    'subsample'         : [0.8, 1.0],                 # row sampling per tree
+    'colsample_bytree'  : [0.8, 1.0],                 # feature sampling per tree
 }
-# gamma (min split gain) intentionally excluded — reg_lambda + shallow depth
-# already handles split regularisation; gamma adds redundancy with small N
 
 FREQUENCIES = {
     'Yearly':      (pd.DateOffset(years=1),  252),
-    'Semi-Annual': (pd.DateOffset(months=6), 126),
-    'Quarterly':   (pd.DateOffset(months=3),  63),
-    'Monthly':     (pd.DateOffset(months=1),  21),
+    #'Semi-Annual': (pd.DateOffset(months=6), 126),
+    #'Quarterly':   (pd.DateOffset(months=3),  63),
+    #'Monthly':     (pd.DateOffset(months=1),  21),
 }
 
 start_invest = pd.Timestamp("1998-01-01")
@@ -211,16 +213,18 @@ def tune_and_predict(X_train_list, y_train_list,
         seed_preds = []
         for seed in seeds:
             m = XGBRegressor(
-                objective        = 'reg:pseudohubererror',  # FIX 9: Huber loss
-                n_jobs           = -1,
-                random_state     = seed,
-                verbosity        = 0,
-                learning_rate    = params['learning_rate'],
-                max_depth        = params['max_depth'],
-                n_estimators     = params['n_estimators'],
-                reg_lambda       = params['reg_lambda'],
-                subsample        = params['subsample'],
-                colsample_bytree = params['colsample_bytree'],
+                objective         = 'reg:pseudohubererror',  # FIX 9: Huber loss
+                n_jobs            = -1,
+                random_state      = seed,
+                verbosity         = 0,
+                learning_rate     = params['learning_rate'],
+                max_depth         = params['max_depth'],
+                min_child_weight  = params['min_child_weight'],
+                gamma             = params['gamma'],
+                n_estimators      = params['n_estimators'],
+                reg_lambda        = params['reg_lambda'],
+                subsample         = params['subsample'],
+                colsample_bytree  = params['colsample_bytree'],
             )
             m.fit(X_train, y_train)
             seed_preds.append(m.predict(X_val))
@@ -244,6 +248,7 @@ def tune_and_predict(X_train_list, y_train_list,
     y_es_val  = y_all.iloc[-n_es_val:]
 
     final_preds = []
+    fi_accum    = []
     for seed in seeds:
         m = XGBRegressor(
             objective             = 'reg:pseudohubererror',
@@ -252,6 +257,8 @@ def tune_and_predict(X_train_list, y_train_list,
             verbosity             = 0,
             learning_rate         = best_params['learning_rate'],
             max_depth             = best_params['max_depth'],
+            min_child_weight      = best_params['min_child_weight'],
+            gamma                 = best_params['gamma'],
             n_estimators          = best_params['n_estimators'],
             reg_lambda            = best_params['reg_lambda'],
             subsample             = best_params['subsample'],
@@ -264,13 +271,17 @@ def tune_and_predict(X_train_list, y_train_list,
             verbose  = False,
         )
         final_preds.append(m.predict(current_feat))
+        fi_accum.append(m.feature_importances_)
 
     avg_final   = np.mean(final_preds, axis=0)
     pred_series = pd.Series(
         avg_final, index=current_feat.index
     ).sort_values(ascending=False)
 
-    return pred_series, best_params, best_val_r2
+    mean_fi    = np.mean(fi_accum, axis=0)
+    feat_names = list(current_feat.columns)
+
+    return pred_series, best_params, best_val_r2, mean_fi, feat_names
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -279,18 +290,27 @@ def tune_and_predict(X_train_list, y_train_list,
 n_combos = len(build_param_combinations(PARAM_GRID))
 
 for label, (offset, horizon) in FREQUENCIES.items():
+    if label == 'Monthly':
+        TRAIN_MONTHS = TRAIN_MONTHS_MONTHLY
+        VAL_MONTHS   = VAL_MONTHS_MONTHLY
+    else:
+        TRAIN_MONTHS = TRAIN_MONTHS_OTHERS
+        VAL_MONTHS   = VAL_MONTHS_OTHERS
+
     print(
         f"\n=== XGBoost [{label}] | horizon={horizon}d | "
+        f"train={TRAIN_MONTHS}mo val={VAL_MONTHS}mo | "
         f"{n_combos} param combos | {len(SEEDS)} seeds | "
         f"TC={TC_BPS}bps ==="
     )
 
-    current_date          = start_invest
-    portfolio_value       = 1.0
-    last_end_weights      = pd.Series(dtype=float)
-    portfolio_performance = []
-    rebalance_details     = []
-    model_stats           = []
+    current_date              = start_invest
+    portfolio_value           = 1.0
+    last_end_weights          = pd.Series(dtype=float)
+    portfolio_performance     = []
+    rebalance_details         = []
+    model_stats               = []
+    feature_importance_records = []
 
     while current_date < end_invest:
         next_rebalance = current_date + offset
@@ -328,14 +348,16 @@ for label, (offset, horizon) in FREQUENCIES.items():
                 if len(valid_tickers) >= 2:
                     # FIX 5: cap ffill at 5 days
                     train_prices   = hist_prices[valid_tickers].ffill(limit=5)
-                    val_start_date = actual_trade_date - pd.DateOffset(months=VAL_MONTHS)
-                    val_split      = int(np.searchsorted(train_prices.index, val_start_date))
+                    val_start_date   = actual_trade_date - pd.DateOffset(months=VAL_MONTHS)
+                    train_start_date = actual_trade_date - pd.DateOffset(months=TRAIN_MONTHS + VAL_MONTHS)
+                    val_split        = int(np.searchsorted(train_prices.index, val_start_date))
+                    train_start_idx  = max(260, int(np.searchsorted(train_prices.index, train_start_date)))
 
                     X_train_list, y_train_list = [], []
                     X_val_list,   y_val_list   = [], []
 
-                    # Training samples
-                    for i in range(260, val_split - horizon, 21):
+                    # Training samples — rolling window: only [train_start_idx, val_split)
+                    for i in range(train_start_idx, val_split - horizon, 21):
                         feat    = create_features(train_prices.iloc[:i])
                         if feat.empty:
                             continue
@@ -369,12 +391,15 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         current_feat = create_features(train_prices)
 
                         if not current_feat.empty:
-                            pred_series, best_params, best_val_r2 = tune_and_predict(
+                            pred_series, best_params, best_val_r2, fi_values, fi_names = tune_and_predict(
                                 X_train_list, y_train_list,
                                 X_val_list,   y_val_list,
                                 current_feat, PARAM_GRID, SEEDS,
                                 EARLY_STOPPING_ROUNDS,
                             )
+                            fi_row = {'rebalance_date': actual_trade_date.strftime('%Y-%m-%d')}
+                            fi_row.update(dict(zip(fi_names, fi_values)))
+                            feature_importance_records.append(fi_row)
                             target_weights = allocate_weights(
                                 pred_series, WEIGHT_MIN, WEIGHT_MAX
                             )
@@ -534,5 +559,8 @@ for label, (offset, horizon) in FREQUENCIES.items():
     )
     pd.DataFrame(model_stats).to_csv(
         output_dir / f"portfolio_xgb_{label}_statistics.csv", index=False
+    )
+    pd.DataFrame(feature_importance_records).to_csv(
+        output_dir / f"portfolio_xgb_{label}_feature_importance.csv", index=False
     )
     print(f"\n  [{label}] Done — saved to {output_dir}")
