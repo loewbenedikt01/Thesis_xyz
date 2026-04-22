@@ -34,7 +34,11 @@ from metrics import (
 # ─────────────────────────────────────────────────────────────────────────────
 # PATHS
 # ─────────────────────────────────────────────────────────────────────────────
-DATA_PATH          = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
+script_dir = Path(__file__).resolve().parent
+
+# DATA_PATH          = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
+DATA_PATH = script_dir.parent
+
 output_dir_metrics = DATA_PATH / "results" / "metrics" / "xgboost"
 output_dir_plots   = DATA_PATH / "results" / "plots"   / "xgboost"
 output_dir_metrics.mkdir(parents=True, exist_ok=True)

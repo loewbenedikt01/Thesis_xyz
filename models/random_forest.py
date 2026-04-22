@@ -51,9 +51,9 @@ PARAM_GRID = {
 
 FREQUENCIES = {
     'Yearly':      (pd.DateOffset(years=1),  252),
-    #'Semi-Annual': (pd.DateOffset(months=6), 126),
-    #'Quarterly':   (pd.DateOffset(months=3),  63),
-    #'Monthly':     (pd.DateOffset(months=1),  21),
+    'Semi-Annual': (pd.DateOffset(months=6), 126),
+    'Quarterly':   (pd.DateOffset(months=3),  63),
+    'Monthly':     (pd.DateOffset(months=1),  21),
 }
 
 start_invest = pd.Timestamp("1998-01-01")
@@ -62,7 +62,9 @@ end_invest   = pd.Timestamp("2025-12-31")
 # ─────────────────────────────────────────────────────────────────────────────
 # PATHS
 # ─────────────────────────────────────────────────────────────────────────────
-DATA_PATH   = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
+#DATA_PATH   = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
+script_dir = Path(__file__).resolve().parent
+DATA_PATH   = script_dir.parent
 prices_file = DATA_PATH / "universe_prices.parquet"
 output_dir  = DATA_PATH / "results" / "data" / "random_forest"
 output_dir.mkdir(parents=True, exist_ok=True)

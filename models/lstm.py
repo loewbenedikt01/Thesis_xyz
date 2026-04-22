@@ -96,7 +96,9 @@ end_invest   = pd.Timestamp("2025-12-31")
 # ─────────────────────────────────────────────────────────────────────────────
 # PATHS
 # ─────────────────────────────────────────────────────────────────────────────
-DATA_PATH   = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
+#DATA_PATH   = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
+script_dir = Path(__file__).resolve().parent
+DATA_PATH   = script_dir.parent
 prices_file = DATA_PATH / "universe_prices.parquet"
 output_dir  = DATA_PATH / "results" / "data" / "lstm"
 output_dir.mkdir(parents=True, exist_ok=True)
