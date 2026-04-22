@@ -410,6 +410,8 @@ for label, (offset, horizon) in FREQUENCIES.items():
                                 f"universe={select_year} ({len(valid_tickers)} stocks) | "
                                 f"lr={best_params.get('learning_rate')} "
                                 f"depth={best_params.get('max_depth')} "
+                                f"mcw={best_params.get('min_child_weight')} "
+                                f"gamma={best_params.get('gamma')} "
                                 f"rounds={best_params.get('n_estimators')} "
                                 f"lambda={best_params.get('reg_lambda')} "
                                 f"sub={best_params.get('subsample')} "
@@ -454,13 +456,15 @@ for label, (offset, horizon) in FREQUENCIES.items():
                 'assigned_weight'    : w,
                 'turnover'           : round(turnover, 6) if ticker == target_weights.index[0] else 0,
                 'tc_drag_bps'        : round(turnover * TC_BPS, 4) if ticker == target_weights.index[0] else 0,
-                'best_learning_rate' : best_params.get('learning_rate',     np.nan),
-                'best_max_depth'     : best_params.get('max_depth',         np.nan),
-                'best_n_estimators'  : best_params.get('n_estimators',      np.nan),
-                'best_reg_lambda'    : best_params.get('reg_lambda',        np.nan),
-                'best_subsample'     : best_params.get('subsample',         np.nan),
-                'best_colsample'     : best_params.get('colsample_bytree',  np.nan),
-                'val_R2_selected'    : round(best_val_r2, 6) if not np.isnan(best_val_r2) else np.nan,
+                'best_learning_rate'   : best_params.get('learning_rate',     np.nan),
+                'best_max_depth'       : best_params.get('max_depth',         np.nan),
+                'best_min_child_weight': best_params.get('min_child_weight',  np.nan),
+                'best_gamma'           : best_params.get('gamma',             np.nan),
+                'best_n_estimators'    : best_params.get('n_estimators',      np.nan),
+                'best_reg_lambda'      : best_params.get('reg_lambda',        np.nan),
+                'best_subsample'       : best_params.get('subsample',         np.nan),
+                'best_colsample'       : best_params.get('colsample_bytree',  np.nan),
+                'val_R2_selected'      : round(best_val_r2, 6) if not np.isnan(best_val_r2) else np.nan,
             })
 
         # ── Daily portfolio drift ─────────────────────────────────────────────
@@ -538,12 +542,14 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         'Spearman'            : spearman,
                         'Directional_Accuracy': float(np.mean(pred_dir == true_dir)),
                         'Geometric_Score'     : geo,
-                        'best_learning_rate'  : best_params.get('learning_rate',    np.nan),
-                        'best_max_depth'      : best_params.get('max_depth',        np.nan),
-                        'best_n_estimators'   : best_params.get('n_estimators',     np.nan),
-                        'best_reg_lambda'     : best_params.get('reg_lambda',       np.nan),
-                        'best_subsample'      : best_params.get('subsample',        np.nan),
-                        'best_colsample'      : best_params.get('colsample_bytree', np.nan),
+                        'best_learning_rate'    : best_params.get('learning_rate',    np.nan),
+                        'best_max_depth'        : best_params.get('max_depth',        np.nan),
+                        'best_min_child_weight' : best_params.get('min_child_weight', np.nan),
+                        'best_gamma'            : best_params.get('gamma',            np.nan),
+                        'best_n_estimators'     : best_params.get('n_estimators',     np.nan),
+                        'best_reg_lambda'       : best_params.get('reg_lambda',       np.nan),
+                        'best_subsample'        : best_params.get('subsample',        np.nan),
+                        'best_colsample'        : best_params.get('colsample_bytree', np.nan),
                         'val_R2_selected'     : best_val_r2,
                         'turnover'            : turnover,
                         'tc_drag_bps'         : turnover * TC_BPS,

@@ -429,10 +429,11 @@ for label, (offset, horizon) in FREQUENCIES.items():
                 'assigned_weight' : w,
                 'turnover'        : round(turnover, 6) if ticker == target_weights.index[0] else 0,
                 'tc_drag_bps'     : round(turnover * TC_BPS, 4) if ticker == target_weights.index[0] else 0,
-                'best_depth'      : best_params.get('max_depth',        np.nan),
-                'best_n_est'      : best_params.get('n_estimators',     np.nan),
-                'best_leaf'       : best_params.get('min_samples_leaf', np.nan),
-                'val_R2_selected' : round(best_val_r2, 6) if not np.isnan(best_val_r2) else np.nan,
+                'best_depth'        : best_params.get('max_depth',        np.nan),
+                'best_n_est'        : best_params.get('n_estimators',     np.nan),
+                'best_leaf'         : best_params.get('min_samples_leaf', np.nan),
+                'best_max_features' : best_params.get('max_features',     np.nan),
+                'val_R2_selected'   : round(best_val_r2, 6) if not np.isnan(best_val_r2) else np.nan,
             })
 
         # ── Daily portfolio drift ─────────────────────────────────────────────
@@ -514,6 +515,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         'best_depth'          : best_params.get('max_depth',        np.nan),
                         'best_n_estimators'   : best_params.get('n_estimators',     np.nan),
                         'best_min_leaf'       : best_params.get('min_samples_leaf', np.nan),
+                        'best_max_features'   : best_params.get('max_features',     np.nan),
                         'val_R2_selected'     : best_val_r2,
                         'turnover'            : turnover,
                         'tc_drag_bps'         : turnover * TC_BPS,

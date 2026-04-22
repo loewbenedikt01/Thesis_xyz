@@ -57,7 +57,7 @@ SEQ_LEN          = 12       # monthly snapshots per LSTM sequence
 # The effective seed = BASE_SEED + RUN_NUMBER
 # This gives reproducible but distinct results per run without looping
 BASE_SEED   = 41
-RUN_NUMBER  = 8             # <── change this per execution (1, 2, 3, ...)
+RUN_NUMBER  = 1             # <── change this per execution (1, 2, 3, ...)
 RANDOM_SEED = BASE_SEED + RUN_NUMBER
 
 # FIX 14: Transaction costs — set TC_BPS = 0 to disable
@@ -198,7 +198,8 @@ def allocate_weights(predictions: pd.Series, w_min: float,
 # Geometric pyramid rule: units → units//2 → units//4
 # ─────────────────────────────────────────────────────────────────────────────
 def build_lstm(units: int, dropout_rate: float, lr: float,
-               seq_len: int, n_features: int) -> tf.keras.Model:
+               seq_len: int, n_features: int,
+               recurrent_dropout: float = 0.0) -> tf.keras.Model:
     """
     units       : LSTM hidden units (e.g. 16, 32, 64)
     dropout_rate: fraction of units dropped after LSTM
@@ -213,10 +214,11 @@ def build_lstm(units: int, dropout_rate: float, lr: float,
         # ── Recurrent layer ───────────────────────────────────────────────
         LSTM(
             units,
-            input_shape       = (seq_len, n_features),
-            return_sequences  = False,
-            kernel_regularizer    = l2(L2_LAMBDA),   # FIX 9: L2 on input weights
-            recurrent_regularizer = l2(L2_LAMBDA),   # FIX 9: L2 on recurrent weights
+            input_shape           = (seq_len, n_features),
+            return_sequences      = False,
+            kernel_regularizer    = l2(L2_LAMBDA),
+            recurrent_regularizer = l2(L2_LAMBDA),
+            recurrent_dropout     = recurrent_dropout,
         ),
         # FIX 10: Batch normalisation — stabilises activations across stocks
         BatchNormalization(),
@@ -253,8 +255,9 @@ def build_lstm(units: int, dropout_rate: float, lr: float,
 # MAIN BACKTEST LOOP
 # ─────────────────────────────────────────────────────────────────────────────
 print(f"\n=== LSTM | seed={RANDOM_SEED} (base={BASE_SEED} + run={RUN_NUMBER}) ===")
-print(f"    Grid: {len(GRID_NODES)}×{len(GRID_DROPOUTS)}×{len(GRID_LR)} = "
-      f"{len(GRID_NODES)*len(GRID_DROPOUTS)*len(GRID_LR)} combos | "
+n_grid = len(GRID_NODES) * len(GRID_LR) * len(BATCH_SIZE)
+print(f"    Grid: {len(GRID_NODES)} nodes × {len(GRID_LR)} lr × {len(BATCH_SIZE)} batch = "
+      f"{n_grid} combos | dropout={GRID_DROPOUTS} rec_drop={RECURRENT_DROPOUT} | "
       f"TC={TC_BPS}bps | VAL={VAL_MONTHS}mo\n")
 
 for label, (offset, horizon) in FREQUENCIES.items():
@@ -377,7 +380,8 @@ for label, (offset, horizon) in FREQUENCIES.items():
                             for g_lr in GRID_LR:
                                 for g_batch in BATCH_SIZE:
                                     g_model = build_lstm(
-                                        g_node, GRID_DROPOUTS, g_lr, SEQ_LEN, n_features
+                                        g_node, GRID_DROPOUTS, g_lr, SEQ_LEN, n_features,
+                                        recurrent_dropout=RECURRENT_DROPOUT,
                                     )
                                     callbacks = [
                                         EarlyStopping(
@@ -424,7 +428,8 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         y_full = np.concatenate([y_tr, y_vl], axis=0) if has_val else y_tr
 
                         final_model = build_lstm(
-                            best_nodes, GRID_DROPOUTS, best_lr, SEQ_LEN, n_features
+                            best_nodes, GRID_DROPOUTS, best_lr, SEQ_LEN, n_features,
+                            recurrent_dropout=RECURRENT_DROPOUT,
                         )
                         final_callbacks = [
                             EarlyStopping(

@@ -31,7 +31,7 @@ MODELS = [
             BASE, "data", "lstm",
             f"portfolio_lstm_{freq_file.replace('statistics_', '').replace('.csv', '')}_statistics.csv"
         ),
-        ["best_nodes", "best_dropout", "best_lr"],
+        ["best_nodes", "best_batch", "best_lr"],
     ),
 ]
 
