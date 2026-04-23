@@ -535,6 +535,6 @@ for label, (offset, horizon) in FREQUENCIES.items():
         output_dir / f"portfolio_rf_{label}_statistics.csv", index=False
     )
     pd.DataFrame(feature_importance_records).to_csv(
-        output_dir / f"feature_importance_rf_{label}.csv", index=False
+        output_dir / f"portfolio_rf_{label}_feature_importance_.csv", index=False
     )
     print(f"\n  [{label}] Done — saved to {output_dir}")
