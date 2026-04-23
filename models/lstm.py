@@ -57,7 +57,7 @@ SEQ_LEN          = 12       # monthly snapshots per LSTM sequence
 # The effective seed = BASE_SEED + RUN_NUMBER
 # This gives reproducible but distinct results per run without looping
 BASE_SEED   = 41
-RUN_NUMBER  = 2            # <── change this per execution (1, 2, 3, ...)
+RUN_NUMBER  = 1            # <── change this per execution (1, 2, 3, ...)
 RANDOM_SEED = BASE_SEED + RUN_NUMBER
 
 # FIX 14: Transaction costs — set TC_BPS = 0 to disable
@@ -84,9 +84,9 @@ FULL_EPOCHS   = 50                  # max epochs for final model
 PATIENCE      = 8                   # early stopping patience for final model
 
 FREQUENCIES = {
-    'Yearly':      (pd.DateOffset(years=1),  252),
+    #'Yearly':      (pd.DateOffset(years=1),  252),
     #'Semi-Annual': (pd.DateOffset(months=6), 126),
-    #'Quarterly':   (pd.DateOffset(months=3),  63),
+    'Quarterly':   (pd.DateOffset(months=3),  63),
     #'Monthly':     (pd.DateOffset(months=1),  21),
 }
 
