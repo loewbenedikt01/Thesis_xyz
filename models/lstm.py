@@ -57,7 +57,7 @@ SEQ_LEN          = 12       # monthly snapshots per LSTM sequence
 # The effective seed = BASE_SEED + RUN_NUMBER
 # This gives reproducible but distinct results per run without looping
 BASE_SEED   = 41
-RUN_NUMBER  = 7            # <── change this per execution (1, 2, 3, ...)
+RUN_NUMBER  = 2            # <── change this per execution (1, 2, 3, ...)
 RANDOM_SEED = BASE_SEED + RUN_NUMBER
 
 # FIX 14: Transaction costs — set TC_BPS = 0 to disable
