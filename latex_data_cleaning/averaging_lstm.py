@@ -64,9 +64,32 @@ def average_details(freq_label: str) -> None:
     print(f"  [details/{freq_label}] Saved {os.path.basename(out_path)}  ({len(result)} rows, {len(files)} run(s))")
 
 
+def average_feature_importance(freq_label: str) -> None:
+    files = sorted(glob.glob(os.path.join(DATA_DIR, f"portfolio_lstm_{freq_label}_run*_feature_importance*.csv")))
+    if not files:
+        print(f"  [feature_importance/{freq_label}] No run files found — skipping.")
+        return
+
+    combined = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
+    id_col   = "rebalance_date"
+    avg_cols = [c for c in combined.columns if c != id_col]
+
+    result = (
+        combined.groupby(id_col)[avg_cols]
+        .mean()
+        .reset_index()
+        .sort_values(id_col)
+        .reset_index(drop=True)
+    )
+    out_path = os.path.join(DATA_DIR, f"portfolio_lstm_{freq_label}_feature_importance.csv")
+    result.to_csv(out_path, index=False, float_format="%.6f")
+    print(f"  [feature_importance/{freq_label}] Saved {os.path.basename(out_path)}  ({len(result)} rows, {len(files)} run(s))")
+
+
 def average_portfolio_returns(freq_label: str) -> None:
     all_files = sorted(glob.glob(os.path.join(DATA_DIR, f"portfolio_lstm_{freq_label}_run*.csv")))
-    files = [f for f in all_files if "_statistics" not in f and "_details" not in f]
+    files = [f for f in all_files if "_statistics" not in f and "_details" not in f
+             and "_feature_importance" not in f]
     if not files:
         print(f"  [returns/{freq_label}] No run files found — skipping.")
         return
@@ -92,5 +115,6 @@ for freq_label, out_suffix in FREQUENCIES.items():
     average_statistics(freq_label)
     average_details(freq_label)
     average_portfolio_returns(freq_label)
+    average_feature_importance(freq_label)
 
 print("\nDone.")
