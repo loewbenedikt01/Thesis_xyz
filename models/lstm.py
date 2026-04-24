@@ -84,8 +84,8 @@ FULL_EPOCHS   = 50                  # max epochs for final model
 PATIENCE      = 8                   # early stopping patience for final model
 
 FREQUENCIES = {
-    'Yearly':      (pd.DateOffset(years=1),  252),
-    #'Semi-Annual': (pd.DateOffset(months=6), 126),
+    #'Yearly':      (pd.DateOffset(years=1),  252),
+    'Semi-Annual': (pd.DateOffset(months=6), 126),
     #'Quarterly':   (pd.DateOffset(months=3),  63),
     #'Monthly':     (pd.DateOffset(months=1),  21),
 }
