@@ -86,8 +86,8 @@ PATIENCE      = 8                   # early stopping patience for final model
 FREQUENCIES = {
     #'Yearly':      (pd.DateOffset(years=1),  252),
     #'Semi-Annual': (pd.DateOffset(months=6), 126),
-    #'Quarterly':   (pd.DateOffset(months=3),  63),
-    'Monthly':     (pd.DateOffset(months=1),  21),
+    'Quarterly':   (pd.DateOffset(months=3),  63),
+    #'Monthly':     (pd.DateOffset(months=1),  21),
 }
 
 start_invest = pd.Timestamp("1998-01-01")
