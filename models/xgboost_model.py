@@ -59,18 +59,16 @@ EARLY_STOPPING_ROUNDS = 10
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HYPERPARAMETER GRID
-# 4 × 4 × 3 × 3 × 2 × 2 = 576 combos — evaluated on TRUE holdout val set
-# (not k-fold CV, which would break temporal ordering)
 # ─────────────────────────────────────────────────────────────────────────────
 PARAM_GRID = {
-    'learning_rate'     : [0.05, 0.10, 0.3],          # step shrinkage (ν in paper)
-    'max_depth'         : [1, 2, 5],                  # shallow = regularised
-    'min_child_weight'  : [1, 5, 10],
-    'gamma'             : [0.5],
-    'n_estimators'      : [100, 135, 200],            # boosting rounds (B in paper)
+    'learning_rate'     : [0.05, 0.10, 0.2],          # step shrinkage (ν in paper)
+    'max_depth'         : [1, 2, 3, 5],                  # shallow = regularised
+    'min_child_weight'  : [1, 3, 5, 10],
+    'n_estimators'      : [100, 200, 300],            # boosting rounds (B in paper)
     'reg_lambda'        : [1, 3, 5],                  # L2 on leaf weights
-    'subsample'         : [0.8, 1.0],                 # row sampling per tree
-    'colsample_bytree'  : [0.8, 1.0],                 # feature sampling per tree
+    'subsample'         : [1.0],                 # row sampling per tree
+    'colsample_bytree'  : [1.0],                 # feature sampling per tree
+    'gamma'             : [0.5],
 }
 
 FREQUENCIES = {
