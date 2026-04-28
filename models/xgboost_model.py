@@ -40,10 +40,14 @@ import universe
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
-TRAIN_MONTHS_MONTHLY     = 9       # training lookback in months
-VAL_MONTHS_MONTHLY       = 3       # holdout validation window in months
-TRAIN_MONTHS_OTHERS     = 36       # training lookback in months
-VAL_MONTHS_OTHERS       = 24       # holdout validation window in months
+TRAIN_MONTHS_MONTHLY     = 5       # training lookback in months
+VAL_MONTHS_MONTHLY       = 1       # holdout validation window in months
+TRAIN_MONTHS_QUARTERLY     = 15       # training lookback in months
+VAL_MONTHS_QUARTERLY       = 3       # holdout validation window in months
+TRAIN_MONTHS_SEMI_ANNUAL     = 30       # training lookback in months
+VAL_MONTHS_SEMI_ANNUAL       = 6       # holdout validation window in months
+TRAIN_MONTHS_ANNUAL     = 60       # training lookback in months
+VAL_MONTHS_ANNUAL       = 12       # holdout validation window in months
 MIN_COMPLETENESS = 0.50     # min fraction of non-NaN rows per ticker
 WEIGHT_MAX       = 0.10     # max portfolio weight per stock
 WEIGHT_MIN       = 0.01     # min portfolio weight per stock
@@ -61,14 +65,15 @@ EARLY_STOPPING_ROUNDS = 10
 # HYPERPARAMETER GRID
 # ─────────────────────────────────────────────────────────────────────────────
 PARAM_GRID = {
-    'learning_rate'     : [0.05, 0.10, 0.2],          # step shrinkage (ν in paper)
-    'max_depth'         : [1, 2, 3, 5],                  # shallow = regularised
+    'learning_rate'     : [0.005, 0.01, 0.05],          # step shrinkage (ν in paper)
+    'max_depth'         : [1, 2, 3, 5, 8, 10],                  # shallow = regularised
     'min_child_weight'  : [1, 3, 5, 10],
-    'n_estimators'      : [100, 200, 300],            # boosting rounds (B in paper)
+    'n_estimators'      : [100, 200, 300, 400],            # boosting rounds (B in paper)
+    'gamma'             : [0.001, 0.005, 0.01, 0.2],
     'reg_lambda'        : [1, 3, 5],                  # L2 on leaf weights
     'subsample'         : [1.0],                 # row sampling per tree
     'colsample_bytree'  : [1.0],                 # feature sampling per tree
-    'gamma'             : [0.5],
+    
 }
 
 FREQUENCIES = {
@@ -293,9 +298,15 @@ for label, (offset, horizon) in FREQUENCIES.items():
     if label == 'Monthly':
         TRAIN_MONTHS = TRAIN_MONTHS_MONTHLY
         VAL_MONTHS   = VAL_MONTHS_MONTHLY
-    else:
-        TRAIN_MONTHS = TRAIN_MONTHS_OTHERS
-        VAL_MONTHS   = VAL_MONTHS_OTHERS
+    elif label == 'Quarterly':
+        TRAIN_MONTHS = TRAIN_MONTHS_QUARTERLY
+        VAL_MONTHS   = VAL_MONTHS_QUARTERLY
+    elif label == 'Semi-Annual':
+        TRAIN_MONTHS = TRAIN_MONTHS_SEMI_ANNUAL
+        VAL_MONTHS   = VAL_MONTHS_SEMI_ANNUAL
+    else:  # Yearly
+        TRAIN_MONTHS = TRAIN_MONTHS_ANNUAL
+        VAL_MONTHS   = VAL_MONTHS_ANNUAL
 
     print(
         f"\n=== XGBoost [{label}] | horizon={horizon}d | "
