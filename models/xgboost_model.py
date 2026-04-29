@@ -40,18 +40,18 @@ import universe
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
-TRAIN_MONTHS_MONTHLY     = 5       # training lookback in months
-VAL_MONTHS_MONTHLY       = 1       # holdout validation window in months
-TRAIN_MONTHS_QUARTERLY     = 15       # training lookback in months
-VAL_MONTHS_QUARTERLY       = 3       # holdout validation window in months
-TRAIN_MONTHS_SEMI_ANNUAL     = 30       # training lookback in months
-VAL_MONTHS_SEMI_ANNUAL       = 6       # holdout validation window in months
-TRAIN_MONTHS_ANNUAL     = 60       # training lookback in months
-VAL_MONTHS_ANNUAL       = 12       # holdout validation window in months
+TRAIN_MONTHS_MONTHLY     = 5        # training lookback in months
+VAL_MONTHS_MONTHLY       = 2        # must be > 1 horizon (1 mo) to have val samples
+TRAIN_MONTHS_QUARTERLY   = 15       # training lookback in months
+VAL_MONTHS_QUARTERLY     = 6        # must be > 1 horizon (3 mo) to have val samples
+TRAIN_MONTHS_SEMI_ANNUAL = 30       # training lookback in months
+VAL_MONTHS_SEMI_ANNUAL   = 12       # must be > 1 horizon (6 mo) to have val samples
+TRAIN_MONTHS_ANNUAL      = 60       # training lookback in months
+VAL_MONTHS_ANNUAL        = 24       # must be > 1 horizon (12 mo) to have val samples
 MIN_COMPLETENESS = 0.50     # min fraction of non-NaN rows per ticker
 WEIGHT_MAX       = 0.10     # max portfolio weight per stock
 WEIGHT_MIN       = 0.01     # min portfolio weight per stock
-N_SEEDS          = 10       # seeds averaged into one ensemble prediction
+N_SEEDS          = 5       # seeds averaged into one ensemble prediction
 BASE_SEED        = 41       # seeds: 41, 42, …, 50
 
 # Transaction costs — set TC_BPS = 0 to disable
@@ -62,15 +62,14 @@ TC_BPS = 0
 EARLY_STOPPING_ROUNDS = 10
 
 # ─────────────────────────────────────────────────────────────────────────────
-# HYPERPARAMETER GRID
+# HYPERPARAMETER GRID 432 combos
 # ─────────────────────────────────────────────────────────────────────────────
 PARAM_GRID = {
     'learning_rate'     : [0.005, 0.01, 0.05],          # step shrinkage (ν in paper)
-    'max_depth'         : [1, 2, 3, 5, 8, 10],                  # shallow = regularised
+    'max_depth'         : [1, 2, 5, 10],                  # shallow = regularised
     'min_child_weight'  : [1, 3, 5, 10],
-    'n_estimators'      : [100, 200, 300, 400],            # boosting rounds (B in paper)
-    'gamma'             : [0.001, 0.005, 0.01, 0.2],
-    'reg_lambda'        : [1, 3, 5],                  # L2 on leaf weights
+    'n_estimators'      : [100, 200, 300],            # boosting rounds (B in paper)
+    'gamma'             : [0.001, 0.005, 0.01],
     'subsample'         : [1.0],                 # row sampling per tree
     'colsample_bytree'  : [1.0],                 # feature sampling per tree
     
@@ -227,7 +226,6 @@ def tune_and_predict(X_train_list, y_train_list,
                 min_child_weight  = params['min_child_weight'],
                 gamma             = params['gamma'],
                 n_estimators      = params['n_estimators'],
-                reg_lambda        = params['reg_lambda'],
                 subsample         = params['subsample'],
                 colsample_bytree  = params['colsample_bytree'],
             )
@@ -265,7 +263,6 @@ def tune_and_predict(X_train_list, y_train_list,
             min_child_weight      = best_params['min_child_weight'],
             gamma                 = best_params['gamma'],
             n_estimators          = best_params['n_estimators'],
-            reg_lambda            = best_params['reg_lambda'],
             subsample             = best_params['subsample'],
             colsample_bytree      = best_params['colsample_bytree'],
             early_stopping_rounds = early_stopping_rounds,
@@ -422,7 +419,6 @@ for label, (offset, horizon) in FREQUENCIES.items():
                                 f"mcw={best_params.get('min_child_weight')} "
                                 f"gamma={best_params.get('gamma')} "
                                 f"rounds={best_params.get('n_estimators')} "
-                                f"lambda={best_params.get('reg_lambda')} "
                                 f"sub={best_params.get('subsample')} "
                                 f"col={best_params.get('colsample_bytree')} | "
                                 f"val_R2={best_val_r2:.4f}"
@@ -470,7 +466,6 @@ for label, (offset, horizon) in FREQUENCIES.items():
                 'best_min_child_weight': best_params.get('min_child_weight',  np.nan),
                 'best_gamma'           : best_params.get('gamma',             np.nan),
                 'best_n_estimators'    : best_params.get('n_estimators',      np.nan),
-                'best_reg_lambda'      : best_params.get('reg_lambda',        np.nan),
                 'best_subsample'       : best_params.get('subsample',         np.nan),
                 'best_colsample'       : best_params.get('colsample_bytree',  np.nan),
                 'val_R2_selected'      : round(best_val_r2, 6) if not np.isnan(best_val_r2) else np.nan,
@@ -556,7 +551,6 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         'best_min_child_weight' : best_params.get('min_child_weight', np.nan),
                         'best_gamma'            : best_params.get('gamma',            np.nan),
                         'best_n_estimators'     : best_params.get('n_estimators',     np.nan),
-                        'best_reg_lambda'       : best_params.get('reg_lambda',       np.nan),
                         'best_subsample'        : best_params.get('subsample',        np.nan),
                         'best_colsample'        : best_params.get('colsample_bytree', np.nan),
                         'val_R2_selected'     : best_val_r2,

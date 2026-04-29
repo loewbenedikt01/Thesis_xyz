@@ -45,8 +45,14 @@ import universe
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURATION Fischer and Krauss 2018 Methodology
 # ─────────────────────────────────────────────────────────────────────────────
-TRAIN_MONTHS     = 36       # training lookback in months as fischer and krauss
-VAL_MONTHS       = 12       # put to 1 year, as fischer and frauss
+TRAIN_MONTHS_MONTHLY     = 5        # training lookback in months
+VAL_MONTHS_MONTHLY       = 2        # must be > 1 horizon (1 mo) to have val samples
+TRAIN_MONTHS_QUARTERLY   = 15       # training lookback in months
+VAL_MONTHS_QUARTERLY     = 6        # must be > 1 horizon (3 mo) to have val samples
+TRAIN_MONTHS_SEMI_ANNUAL = 30       # training lookback in months
+VAL_MONTHS_SEMI_ANNUAL   = 12       # must be > 1 horizon (6 mo) to have val samples
+TRAIN_MONTHS_ANNUAL      = 60       # training lookback in months
+VAL_MONTHS_ANNUAL        = 24       # must be > 1 horizon (12 mo) to have val samples
 MIN_COMPLETENESS = 0.50     # min fraction of non-NaN rows per ticker
 WEIGHT_MAX       = 0.10     # max portfolio weight per stock
 WEIGHT_MIN       = 0.01     # min portfolio weight per stock
@@ -72,12 +78,9 @@ L2_LAMBDA = 1e-4
 # 3 node sizes × 3 dropout rates × 2 learning rates = 18 combinations
 # ─────────────────────────────────────────────────────────────────────────────
 GRID_NODES    = [16, 32]            # LSTM hidden units
-GRID_LR       = [0.001, 0.01]       # Adam initial learning rate
+GRID_DROPOUTS = [0.2, 0.3]          # dropout rates searched in grid
 BATCH_SIZE    = [32, 64]            # smaller batch = better gradient estimates for small N
-
-
-RECURRENT_DROPOUT = 0.1
-GRID_DROPOUTS = 0.2                 # dropout rate after LSTM
+LR            = 0.01                # Adam learning rate (hardcoded)
 GRID_EPOCHS   = 10                  # max epochs per grid combo
 GRID_PATIENCE = 3                   # early stopping patience during grid search
 FULL_EPOCHS   = 50                  # max epochs for final model
@@ -85,7 +88,7 @@ PATIENCE      = 8                   # early stopping patience for final model
 
 FREQUENCIES = {
     #'Yearly':      (pd.DateOffset(years=1),  252),
-    'Semi-Annual': (pd.DateOffset(months=6), 126),
+    #'Semi-Annual': (pd.DateOffset(months=6), 126),
     #'Quarterly':   (pd.DateOffset(months=3),  63),
     #'Monthly':     (pd.DateOffset(months=1),  21),
 }
@@ -198,8 +201,7 @@ def allocate_weights(predictions: pd.Series, w_min: float,
 # Geometric pyramid rule: units → units//2 → units//4
 # ─────────────────────────────────────────────────────────────────────────────
 def build_lstm(units: int, dropout_rate: float, lr: float,
-               seq_len: int, n_features: int,
-               recurrent_dropout: float = 0.0) -> tf.keras.Model:
+               seq_len: int, n_features: int) -> tf.keras.Model:
     """
     units       : LSTM hidden units (e.g. 16, 32, 64)
     dropout_rate: fraction of units dropped after LSTM
@@ -218,7 +220,6 @@ def build_lstm(units: int, dropout_rate: float, lr: float,
             return_sequences      = False,
             kernel_regularizer    = l2(L2_LAMBDA),
             recurrent_regularizer = l2(L2_LAMBDA),
-            recurrent_dropout     = recurrent_dropout,
         ),
         # FIX 10: Batch normalisation — stabilises activations across stocks
         BatchNormalization(),
@@ -255,9 +256,9 @@ def build_lstm(units: int, dropout_rate: float, lr: float,
 # MAIN BACKTEST LOOP
 # ─────────────────────────────────────────────────────────────────────────────
 print(f"\n=== LSTM | seed={RANDOM_SEED} (base={BASE_SEED} + run={RUN_NUMBER}) ===")
-n_grid = len(GRID_NODES) * len(GRID_LR) * len(BATCH_SIZE)
-print(f"    Grid: {len(GRID_NODES)} nodes × {len(GRID_LR)} lr × {len(BATCH_SIZE)} batch = "
-      f"{n_grid} combos | dropout={GRID_DROPOUTS} rec_drop={RECURRENT_DROPOUT} | "
+n_grid = len(GRID_NODES) * len(GRID_DROPOUTS) * len(BATCH_SIZE)
+print(f"    Grid: {len(GRID_NODES)} nodes × {len(GRID_DROPOUTS)} dropout × {len(BATCH_SIZE)} batch = "
+      f"{n_grid} combos | lr={LR} (hardcoded) | "
       f"TC={TC_BPS}bps | VAL={VAL_MONTHS}mo\n")
 
 for label, (offset, horizon) in FREQUENCIES.items():
@@ -287,7 +288,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
         target_weights = None
         pred_series    = None
         best_nodes     = GRID_NODES[0]
-        best_lr        = GRID_LR[0]
+        best_dropout   = GRID_DROPOUTS[0]
         best_batch     = BATCH_SIZE[0]
         best_val_loss  = np.nan
 
@@ -377,11 +378,10 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         best_val_loss_grid = np.inf
 
                         for g_node in GRID_NODES:
-                            for g_lr in GRID_LR:
+                            for g_dropout in GRID_DROPOUTS:
                                 for g_batch in BATCH_SIZE:
                                     g_model = build_lstm(
-                                        g_node, GRID_DROPOUTS, g_lr, SEQ_LEN, n_features,
-                                        recurrent_dropout=RECURRENT_DROPOUT,
+                                        g_node, g_dropout, LR, SEQ_LEN, n_features,
                                     )
                                     callbacks = [
                                         EarlyStopping(
@@ -408,7 +408,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
                                     if g_loss < best_val_loss_grid:
                                         best_val_loss_grid = g_loss
                                         best_nodes    = g_node
-                                        best_lr       = g_lr
+                                        best_dropout  = g_dropout
                                         best_batch    = g_batch
                                         best_val_loss = g_loss
 
@@ -418,8 +418,8 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         print(
                             f"  [{label}] {current_date.date()} | "
                             f"universe={select_year} ({len(valid_tickers)} stocks) | "
-                            f"best: nodes={best_nodes} batch={best_batch} "
-                            f"lr={best_lr} | val_loss={best_val_loss:.5f}"
+                            f"best: nodes={best_nodes} dropout={best_dropout} batch={best_batch} "
+                            f"lr={LR} | val_loss={best_val_loss:.5f}"
                         )
 
                         # ── Final model: train + val combined ─────────────────
@@ -428,8 +428,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         y_full = np.concatenate([y_tr, y_vl], axis=0) if has_val else y_tr
 
                         final_model = build_lstm(
-                            best_nodes, GRID_DROPOUTS, best_lr, SEQ_LEN, n_features,
-                            recurrent_dropout=RECURRENT_DROPOUT,
+                            best_nodes, best_dropout, LR, SEQ_LEN, n_features,
                         )
                         final_callbacks = [
                             EarlyStopping(
@@ -546,8 +545,9 @@ for label, (offset, horizon) in FREQUENCIES.items():
                 'turnover'       : round(turnover, 6) if ticker == target_weights.index[0] else 0,
                 'tc_drag_bps'    : round(turnover * TC_BPS, 4) if ticker == target_weights.index[0] else 0,
                 'best_nodes'     : best_nodes,
+                'best_dropout'   : best_dropout,
                 'best_batch'     : best_batch,
-                'best_lr'        : best_lr,
+                'best_lr'        : LR,
                 'best_val_loss'  : round(best_val_loss, 6) if not np.isnan(best_val_loss) else np.nan,
                 'run_number'     : RUN_NUMBER,
                 'seed'           : RANDOM_SEED,
@@ -620,8 +620,9 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         'seed'                : RANDOM_SEED,
                         'n_stocks'            : len(common_idx),
                         'best_nodes'          : best_nodes,
+                        'best_dropout'        : best_dropout,
                         'best_batch'          : best_batch,
-                        'best_lr'             : best_lr,
+                        'best_lr'             : LR,
                         'best_val_loss'       : best_val_loss,
                         'RMSE'                : float(np.sqrt(np.mean((y_pred - y_true_rank)**2))),
                         'MSE'                 : float(np.mean((y_pred - y_true_rank)**2)),

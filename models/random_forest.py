@@ -27,8 +27,14 @@ if project_root not in sys.path:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ─────────────────────────────────────────────────────────────────────────────
-TRAIN_MONTHS     = 36       # training lookback in months
-VAL_MONTHS       = 24       # FIX 4: extended from 12 → 24 months
+TRAIN_MONTHS_MONTHLY     = 5        # training lookback in months
+VAL_MONTHS_MONTHLY       = 2        # must be > 1 horizon (1 mo) to have val samples
+TRAIN_MONTHS_QUARTERLY   = 15       # training lookback in months
+VAL_MONTHS_QUARTERLY     = 6        # must be > 1 horizon (3 mo) to have val samples
+TRAIN_MONTHS_SEMI_ANNUAL = 30       # training lookback in months
+VAL_MONTHS_SEMI_ANNUAL   = 12       # must be > 1 horizon (6 mo) to have val samples
+TRAIN_MONTHS_ANNUAL      = 60       # training lookback in months
+VAL_MONTHS_ANNUAL        = 24       # must be > 1 horizon (12 mo) to have val samples
 MIN_COMPLETENESS = 0.50     # min fraction of non-NaN rows required per ticker
 WEIGHT_MAX       = 0.10     # max portfolio weight per stock
 WEIGHT_MIN       = 0.01     # min portfolio weight per stock
@@ -43,10 +49,10 @@ TC_BPS = 0   # <-- change this value; 0 = no costs, 10 = 10bps, 30 = 30bps
 
 # Hyperparameter search grid — all combinations evaluated each period
 PARAM_GRID = {
-    'max_depth'       : [1, 2, 5],
-    'n_estimators'    : [100, 135, 200],
-    'min_samples_leaf': [1, 2, 3, 4, 5],
-    'max_features'    : ['sqrt', 0.5],
+    'max_depth'       :     [1, 2, 5, 10, 20, 30],
+    'n_estimators'    :     [50, 100, 135, 180, 230],
+    'min_samples_leaf':     [1, 2, 4, 10],
+    'min_samples_split':    [2, 5, 10],
 }
 
 FREQUENCIES = {
@@ -224,12 +230,12 @@ def tune_and_predict(X_train_list, y_train_list,
         seed_preds = []
         for seed in seeds:
             m = RandomForestRegressor(
-                n_estimators     = params['n_estimators'],
-                max_depth        = params['max_depth'],
-                min_samples_leaf = params['min_samples_leaf'],
-                max_features     = params['max_features'],
-                n_jobs           = -1,
-                random_state     = seed,
+                n_estimators      = params['n_estimators'],
+                max_depth         = params['max_depth'],
+                min_samples_leaf  = params['min_samples_leaf'],
+                min_samples_split = params['min_samples_split'],
+                n_jobs            = -1,
+                random_state      = seed,
             )
             m.fit(X_train, y_train)
             seed_preds.append(m.predict(X_val))
@@ -248,12 +254,12 @@ def tune_and_predict(X_train_list, y_train_list,
     fi_accum    = []
     for seed in seeds:
         m = RandomForestRegressor(
-            n_estimators     = best_params['n_estimators'],
-            max_depth        = best_params['max_depth'],
-            min_samples_leaf = best_params['min_samples_leaf'],
-            max_features     = best_params['max_features'],
-            n_jobs           = -1,
-            random_state     = seed,
+            n_estimators      = best_params['n_estimators'],
+            max_depth         = best_params['max_depth'],
+            min_samples_leaf  = best_params['min_samples_leaf'],
+            min_samples_split = best_params['min_samples_split'],
+            n_jobs            = -1,
+            random_state      = seed,
         )
         m.fit(X_all, y_all)
         final_preds.append(m.predict(current_feat))
@@ -274,8 +280,21 @@ def tune_and_predict(X_train_list, y_train_list,
 n_combos = len(build_param_combinations(PARAM_GRID))
 
 for label, (offset, horizon) in FREQUENCIES.items():
+    if label == 'Monthly':
+        TRAIN_MONTHS = TRAIN_MONTHS_MONTHLY
+        VAL_MONTHS   = VAL_MONTHS_MONTHLY
+    elif label == 'Quarterly':
+        TRAIN_MONTHS = TRAIN_MONTHS_QUARTERLY
+        VAL_MONTHS   = VAL_MONTHS_QUARTERLY
+    elif label == 'Semi-Annual':
+        TRAIN_MONTHS = TRAIN_MONTHS_SEMI_ANNUAL
+        VAL_MONTHS   = VAL_MONTHS_SEMI_ANNUAL
+    else:  # Yearly
+        TRAIN_MONTHS = TRAIN_MONTHS_ANNUAL
+        VAL_MONTHS   = VAL_MONTHS_ANNUAL
+
     print(
-        f"\n=== RF [{label}] | horizon={horizon}d | "
+        f"\n=== RF [{label}] | horizon={horizon}d | train={TRAIN_MONTHS}mo val={VAL_MONTHS}mo | "
         f"{n_combos} param combos | {len(SEEDS)} seeds | "
         f"TC={TC_BPS}bps ==="
     )
@@ -429,10 +448,10 @@ for label, (offset, horizon) in FREQUENCIES.items():
                 'assigned_weight' : w,
                 'turnover'        : round(turnover, 6) if ticker == target_weights.index[0] else 0,
                 'tc_drag_bps'     : round(turnover * TC_BPS, 4) if ticker == target_weights.index[0] else 0,
-                'best_depth'        : best_params.get('max_depth',        np.nan),
-                'best_n_est'        : best_params.get('n_estimators',     np.nan),
-                'best_leaf'         : best_params.get('min_samples_leaf', np.nan),
-                'best_max_features' : best_params.get('max_features',     np.nan),
+                'best_depth'             : best_params.get('max_depth',         np.nan),
+                'best_n_est'             : best_params.get('n_estimators',      np.nan),
+                'best_min_leaf'          : best_params.get('min_samples_leaf',  np.nan),
+                'best_min_samples_split' : best_params.get('min_samples_split', np.nan),
                 'val_R2_selected'   : round(best_val_r2, 6) if not np.isnan(best_val_r2) else np.nan,
             })
 
@@ -512,10 +531,10 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         'Spearman'            : spearman,
                         'Directional_Accuracy': float(np.mean(pred_dir == true_dir)),
                         'Geometric_Score'     : geo,
-                        'best_depth'          : best_params.get('max_depth',        np.nan),
-                        'best_n_estimators'   : best_params.get('n_estimators',     np.nan),
-                        'best_min_leaf'       : best_params.get('min_samples_leaf', np.nan),
-                        'best_max_features'   : best_params.get('max_features',     np.nan),
+                        'best_depth'             : best_params.get('max_depth',         np.nan),
+                        'best_n_estimators'      : best_params.get('n_estimators',      np.nan),
+                        'best_min_leaf'          : best_params.get('min_samples_leaf',  np.nan),
+                        'best_min_samples_split' : best_params.get('min_samples_split', np.nan),
                         'val_R2_selected'     : best_val_r2,
                         'turnover'            : turnover,
                         'tc_drag_bps'         : turnover * TC_BPS,
