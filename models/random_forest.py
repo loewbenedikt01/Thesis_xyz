@@ -38,7 +38,7 @@ VAL_MONTHS_ANNUAL        = 24       # must be > 1 horizon (12 mo) to have val sa
 MIN_COMPLETENESS = 0.50     # min fraction of non-NaN rows required per ticker
 WEIGHT_MAX       = 0.10     # max portfolio weight per stock
 WEIGHT_MIN       = 0.01     # min portfolio weight per stock
-N_RUNS           = 10       # seeds averaged into one ensemble prediction
+N_RUNS           = 5       # seeds averaged into one ensemble prediction
 BASE_SEED        = 41       # seeds: 41, 42, …, 50
 
 # FIX 3: Transaction costs
