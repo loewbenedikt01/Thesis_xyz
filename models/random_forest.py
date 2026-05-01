@@ -48,6 +48,7 @@ BASE_SEED        = 41       # seeds: 41, 42, …, 50
 TC_BPS = 0   # <-- change this value; 0 = no costs, 10 = 10bps, 30 = 30bps
 
 # Hyperparameter search grid — all combinations evaluated each period
+# 360 grid
 PARAM_GRID = {
     'max_depth'       :     [1, 2, 5, 10, 20, 30],
     'n_estimators'    :     [50, 100, 135, 180, 230],

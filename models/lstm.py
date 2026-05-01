@@ -56,7 +56,10 @@ VAL_MONTHS_ANNUAL        = 24       # must be > 1 horizon (12 mo) to have val sa
 MIN_COMPLETENESS = 0.50     # min fraction of non-NaN rows per ticker
 WEIGHT_MAX       = 0.10     # max portfolio weight per stock
 WEIGHT_MIN       = 0.01     # min portfolio weight per stock
-SEQ_LEN          = 12       # monthly snapshots per LSTM sequence
+SEQ_LEN_MONTHLY     = 3    # 3 monthly snapshots
+SEQ_LEN_QUARTERLY   = 4    # 4 quarterly snapshots (~1 year)
+SEQ_LEN_SEMI_ANNUAL = 4    # 4 semi-annual snapshots (~2 years)
+SEQ_LEN_ANNUAL      = 12   # 12 yearly snapshots (~12 years)
 
 # FIX 7: Single-run seed design
 # Change RUN_NUMBER each time you run the script (1, 2, 3, …)
@@ -75,7 +78,7 @@ L2_LAMBDA = 1e-4
 
 # ─────────────────────────────────────────────────────────────────────────────
 # FIX 6: Expanded hyperparameter grid
-# 3 node sizes × 3 dropout rates × 2 learning rates = 18 combinations
+# 2 node sizes × 2 dropout rates × 2 batch sizes = 8 combinations
 # ─────────────────────────────────────────────────────────────────────────────
 GRID_NODES    = [16, 32]            # LSTM hidden units
 GRID_DROPOUTS = [0.2, 0.3]          # dropout rates searched in grid
@@ -259,10 +262,27 @@ print(f"\n=== LSTM | seed={RANDOM_SEED} (base={BASE_SEED} + run={RUN_NUMBER}) ==
 n_grid = len(GRID_NODES) * len(GRID_DROPOUTS) * len(BATCH_SIZE)
 print(f"    Grid: {len(GRID_NODES)} nodes × {len(GRID_DROPOUTS)} dropout × {len(BATCH_SIZE)} batch = "
       f"{n_grid} combos | lr={LR} (hardcoded) | "
-      f"TC={TC_BPS}bps | VAL={VAL_MONTHS}mo\n")
+      f"TC={TC_BPS}bps\n")
 
 for label, (offset, horizon) in FREQUENCIES.items():
-    print(f"\n=== [{label}] horizon={horizon}d ===")
+    if label == 'Monthly':
+        TRAIN_MONTHS = TRAIN_MONTHS_MONTHLY
+        VAL_MONTHS   = VAL_MONTHS_MONTHLY
+        SEQ_LEN      = SEQ_LEN_MONTHLY
+    elif label == 'Quarterly':
+        TRAIN_MONTHS = TRAIN_MONTHS_QUARTERLY
+        VAL_MONTHS   = VAL_MONTHS_QUARTERLY
+        SEQ_LEN      = SEQ_LEN_QUARTERLY
+    elif label == 'Semi-Annual':
+        TRAIN_MONTHS = TRAIN_MONTHS_SEMI_ANNUAL
+        VAL_MONTHS   = VAL_MONTHS_SEMI_ANNUAL
+        SEQ_LEN      = SEQ_LEN_SEMI_ANNUAL
+    else:  # Yearly
+        TRAIN_MONTHS = TRAIN_MONTHS_ANNUAL
+        VAL_MONTHS   = VAL_MONTHS_ANNUAL
+        SEQ_LEN      = SEQ_LEN_ANNUAL
+
+    print(f"\n=== [{label}] horizon={horizon}d | train={TRAIN_MONTHS}mo val={VAL_MONTHS}mo ===")
 
     current_date               = start_invest
     portfolio_value            = 1.0
