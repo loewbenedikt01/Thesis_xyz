@@ -66,7 +66,7 @@ SEQ_LEN_ANNUAL      = 12   # 12 yearly snapshots (~12 years)
 # The effective seed = BASE_SEED + RUN_NUMBER
 # This gives reproducible but distinct results per run without looping
 BASE_SEED   = 41
-RUN_NUMBER  = 1            # <── change this per execution (1, 2, 3, ...)
+RUN_NUMBER  = 2            # <── change this per execution (1, 2, 3, ...)
 RANDOM_SEED = BASE_SEED + RUN_NUMBER
 
 # FIX 14: Transaction costs — set TC_BPS = 0 to disable
@@ -302,6 +302,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
 
         # Clear TF session at the start of every rebalance to prevent state accumulation
         tf.keras.backend.clear_session()
+        tf.compat.v1.reset_default_graph()
         gc.collect()
 
         # FIX 1: always initialise before any conditional block
@@ -395,6 +396,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
 
                         # ── FIX 6: Grid search over 18 combos ────────────────
                         tf.keras.backend.clear_session()
+                        tf.compat.v1.reset_default_graph()
                         best_val_loss_grid = np.inf
 
                         for g_node in GRID_NODES:
@@ -444,6 +446,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
 
                         # ── Final model: train + val combined ─────────────────
                         tf.keras.backend.clear_session()
+                        tf.compat.v1.reset_default_graph()
                         X_full = np.concatenate([X_tr, X_vl], axis=0) if has_val else X_tr
                         y_full = np.concatenate([y_tr, y_vl], axis=0) if has_val else y_tr
 
@@ -526,6 +529,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         del X_train_seqs, y_train_list, X_val_seqs, y_val_list
                         gc.collect()
                         tf.keras.backend.clear_session()
+                        tf.compat.v1.reset_default_graph()
 
         # ── Fallback ──────────────────────────────────────────────────────────
         if target_weights is None:
@@ -677,11 +681,13 @@ for label, (offset, horizon) in FREQUENCIES.items():
 
     # Hard reset between frequencies to prevent TF state accumulation
     tf.keras.backend.clear_session()
+    tf.compat.v1.reset_default_graph()
     gc.collect(0)
     gc.collect(1)
     gc.collect(2)
 
 # ── Final cleanup ─────────────────────────────────────────────────────────────
 tf.keras.backend.clear_session()
+tf.compat.v1.reset_default_graph()
 gc.collect()
 print(f"\n=== LSTM v2 complete | run={RUN_NUMBER} seed={RANDOM_SEED} ===")
