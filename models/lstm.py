@@ -1,4 +1,4 @@
-"""
+﻿"""
 LSTM Portfolio Model — v2
 ==========================
 Fixes vs original:
@@ -24,6 +24,7 @@ Architecture (matches paper's NN3 spirit):
 
 import gc
 import sys
+import time
 import logging
 logging.getLogger('tensorflow').setLevel(logging.ERROR)
 import numpy as np
@@ -66,7 +67,7 @@ SEQ_LEN_ANNUAL      = 12   # 12 yearly snapshots (~12 years)
 # The effective seed = BASE_SEED + RUN_NUMBER
 # This gives reproducible but distinct results per run without looping
 BASE_SEED   = 41
-RUN_NUMBER  = 1            # <── change this per execution (1, 2, 3, ...)
+RUN_NUMBER  = 3            # <── change this per execution (1, 2, 3, ...)
 RANDOM_SEED = BASE_SEED + RUN_NUMBER
 
 # FIX 14: Transaction costs — set TC_BPS = 0 to disable
@@ -111,6 +112,10 @@ output_dir.mkdir(parents=True, exist_ok=True)
 
 all_prices = pd.read_parquet(prices_file)
 all_prices.index = pd.to_datetime(all_prices.index).tz_localize(None)
+
+# Cap TF thread pool to prevent growth over long runs
+tf.config.threading.set_inter_op_parallelism_threads(2)
+tf.config.threading.set_intra_op_parallelism_threads(4)
 
 # Set global seeds for reproducibility
 tf.random.set_seed(RANDOM_SEED)
@@ -294,6 +299,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
 
     while current_date < end_invest:
         next_rebalance = current_date + offset
+        _iter_start = time.perf_counter()
 
         valid_days = all_prices.index[all_prices.index >= current_date]
         if valid_days.empty:
@@ -302,6 +308,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
 
         # Clear TF session at the start of every rebalance to prevent state accumulation
         tf.keras.backend.clear_session()
+        tf.compat.v1.reset_default_graph()
         gc.collect()
 
         # FIX 1: always initialise before any conditional block
@@ -395,6 +402,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
 
                         # ── FIX 6: Grid search over 18 combos ────────────────
                         tf.keras.backend.clear_session()
+                        tf.compat.v1.reset_default_graph()
                         best_val_loss_grid = np.inf
 
                         for g_node in GRID_NODES:
@@ -444,6 +452,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
 
                         # ── Final model: train + val combined ─────────────────
                         tf.keras.backend.clear_session()
+                        tf.compat.v1.reset_default_graph()
                         X_full = np.concatenate([X_tr, X_vl], axis=0) if has_val else X_tr
                         y_full = np.concatenate([y_tr, y_vl], axis=0) if has_val else y_tr
 
@@ -526,6 +535,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         del X_train_seqs, y_train_list, X_val_seqs, y_val_list
                         gc.collect()
                         tf.keras.backend.clear_session()
+                        tf.compat.v1.reset_default_graph()
 
         # ── Fallback ──────────────────────────────────────────────────────────
         if target_weights is None:
@@ -658,6 +668,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
 
         last_end_weights = active_weights
         current_date     = next_rebalance
+        print(f"  [{label}] {actual_trade_date.date()} done in {time.perf_counter() - _iter_start:.1f}s")
 
     # ── Export — one file per frequency, named with run number ───────────────
     tag = f"{label}_run{RUN_NUMBER}"
@@ -677,11 +688,13 @@ for label, (offset, horizon) in FREQUENCIES.items():
 
     # Hard reset between frequencies to prevent TF state accumulation
     tf.keras.backend.clear_session()
+    tf.compat.v1.reset_default_graph()
     gc.collect(0)
     gc.collect(1)
     gc.collect(2)
 
 # ── Final cleanup ─────────────────────────────────────────────────────────────
 tf.keras.backend.clear_session()
+tf.compat.v1.reset_default_graph()
 gc.collect()
 print(f"\n=== LSTM v2 complete | run={RUN_NUMBER} seed={RANDOM_SEED} ===")
