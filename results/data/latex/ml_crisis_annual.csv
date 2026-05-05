@@ -1,0 +1,11 @@
+crisis,da_mean_crisis_xgboost,sharpe_mean_crisis_xgboost,da_mean_crisis_random_forest,sharpe_mean_crisis_random_forest,da_mean_crisis_lstm,sharpe_mean_crisis_lstm
+overall,0.606579,,0.574530,,,
+Dotcom Crash,0.674436,,0.546241,,,
+GFC (Full),0.689912,,0.708333,,,
+Early Credit Crunch,0.596491,,0.567544,,,
+Acute GFC Crash,0.719737,,0.667105,,,
+European Debt + US Debt Ceiling,0.800000,,0.798684,,,
+Monetary Policy,0.650000,,0.600000,,,
+COVID-19,,,,,,
+Russia/Ukraine,0.516667,,0.450000,,,
+Trade Policy Shock,,,,,,

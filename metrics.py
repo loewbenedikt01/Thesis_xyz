@@ -88,33 +88,13 @@ E. BENCHMARK-RELATIVE METRICS
    alpha                   Jensen's alpha — excess return vs CAPM expectation.
                            Formula: ann_port - (rfr + beta * (ann_bench - rfr))
 
-   information_ratio       Active return / tracking error (annualised).
-                           Active return = portfolio - benchmark per period.
-                           Higher = more consistent alpha per unit of active risk.
-
-   modified_information_ratio  Active annualised return / |MDD of active returns|
-                           Uses drawdown instead of tracking error as the
-                           denominator — penalises sustained underperformance.
-
-   treynor_ratio           (annualized_return - rfr) / beta
-                           Return per unit of systematic (market) risk only.
-
-F. CRISIS-PERIOD METRICS  (computed for each of 9 named crises)
+F. CRISIS-PERIOD METRICS  (computed for each of 9 named crises, two phases each)
    ─────────────────────────────────────────────────────────────────────────────
-   Peak logic: anchor = price on window_start (NOT the all-time high).
-   Drawdown = (trough / anchor) - 1. Recovery = first date >= anchor.
+   Phase 1 — Peak to Trough (p2t): from window_start to defined_trough date.
+   Phase 2 — Trough to Recovery (t2p): from trough date to first date the price
+             returns to the anchor level (or end of data if no recovery).
 
-   max_drawdown            Drop from window_start price to the intra-window trough
-   days_to_trough          Calendar days from window_start to trough date
-   days_trough_to_recovery Calendar days from trough back to anchor price level
-   days_peak_to_breakeven  Total calendar days from window_start to recovery
-   crisis_cum_return       Cumulative return over the full crisis window
-   crisis_ann_return       Annualised return over the full crisis window
-   crisis_ann_volatility   Annualised volatility over the full crisis window
-   crisis_sharpe           Sharpe ratio within the crisis window (rfr = 0)
-   crisis_sortino          Sortino ratio within the crisis window
-   crisis_calmar           crisis_ann_return / |max_drawdown within window|
-   crisis_ulcer_index      Ulcer index computed on the crisis price window
+   Per phase: cum_return, max_drawdown, sharpe, sortino, ulcer, calmar
 
 G. PLOT / REPORT FUNCTIONS
    ─────────────────────────────────────────────────────────────────────────────
@@ -172,18 +152,22 @@ CRISIS_PERIODS = [
 ]
 
 # Per-crisis metric definitions: (key_suffix, display_label, format_string)
-CRISIS_METRIC_LABELS = [
-    ('max_drawdown',            'Max Drawdown (%)',                '{:.2%}'),
-    ('days_to_trough',          'Days: Peak to Trough',            '{:.0f}'),
-    ('days_trough_to_recovery', 'Days: Trough to Breakeven',       '{:.0f}'),
-    ('days_peak_to_breakeven',  'Days: Peak to Breakeven (Total)', '{:.0f}'),
-    ('crisis_cum_return',       'Cumulative Return (Crisis)',       '{:.2%}'),
-    ('crisis_ann_return',       'Annualized Return (Crisis)',       '{:.2%}'),
-    ('crisis_ann_volatility',   'Annualized Volatility (Crisis)',   '{:.2%}'),
-    ('crisis_sharpe',           'Sharpe Ratio (Crisis)',            '{:.3f}'),
-    ('crisis_sortino',          'Sortino Ratio (Crisis)',           '{:.3f}'),
-    ('crisis_calmar',           'Calmar Ratio (Crisis)',            '{:.3f}'),
-    ('crisis_ulcer_index',      'Ulcer Index (Crisis)',             '{:.4f}'),
+CRISIS_METRIC_LABELS_P2T = [
+    ('p2t_cum_return',   'Cum Return (Peak→Trough)',    '{:.2%}'),
+    ('p2t_max_drawdown', 'Max Drawdown (Peak→Trough)',  '{:.2%}'),
+    ('p2t_sharpe',       'Sharpe (Peak→Trough)',        '{:.3f}'),
+    ('p2t_sortino',      'Sortino (Peak→Trough)',       '{:.3f}'),
+    ('p2t_ulcer',        'Ulcer Index (Peak→Trough)',   '{:.4f}'),
+    ('p2t_calmar',       'Calmar (Peak→Trough)',        '{:.3f}'),
+]
+
+CRISIS_METRIC_LABELS_T2P = [
+    ('t2p_cum_return',   'Cum Return (Trough→Recovery)',    '{:.2%}'),
+    ('t2p_max_drawdown', 'Max Drawdown (Trough→Recovery)',  '{:.2%}'),
+    ('t2p_sharpe',       'Sharpe (Trough→Recovery)',        '{:.3f}'),
+    ('t2p_sortino',      'Sortino (Trough→Recovery)',       '{:.3f}'),
+    ('t2p_ulcer',        'Ulcer Index (Trough→Recovery)',   '{:.4f}'),
+    ('t2p_calmar',       'Calmar (Trough→Recovery)',        '{:.3f}'),
 ]
 
 
@@ -367,48 +351,6 @@ def alpha(portfolio_returns: pd.Series, benchmark_returns: pd.Series,
     return float(ann_p - (rfr + b * (ann_bm - rfr)))
 
 
-def information_ratio(portfolio_returns: pd.Series, benchmark_returns: pd.Series,
-                      freq: str = 'D') -> float:
-    """
-    Information Ratio = annualised active return / tracking error.
-    Active return = portfolio return - benchmark return per period.
-    Tracking error = annualised std of active returns.
-    Higher IR = more consistent alpha delivery per unit of active risk.
-    """
-    ann_f                = _annualized_factor(freq)
-    aligned_p, aligned_b = portfolio_returns.align(benchmark_returns, join='inner')
-    active_returns       = aligned_p - aligned_b
-    if active_returns.std() == 0:
-        return np.nan
-    return float((active_returns.mean() / active_returns.std()) * np.sqrt(ann_f))
-
-
-def modified_information_ratio(portfolio_returns: pd.Series,
-                                benchmark_returns: pd.Series,
-                                freq: str = 'D') -> float:
-    """
-    Modified IR = annualised active return / |MDD of active returns|.
-    Replaces tracking error with maximum drawdown of active returns.
-    Penalises sustained underperformance more severely than random noise.
-    """
-    aligned_p, aligned_b = portfolio_returns.align(benchmark_returns, join='inner')
-    active_returns       = aligned_p - aligned_b
-    ann_active           = annualized_return(active_returns, freq)
-    max_dd               = maximum_drawdown(active_returns)
-    return float(ann_active / abs(max_dd)) if max_dd != 0 else np.nan
-
-
-def treynor_ratio(portfolio_returns: pd.Series, benchmark_returns: pd.Series,
-                  rfr: float = 0.0, freq: str = 'D') -> float:
-    """
-    Treynor Ratio = (annualized_return - rfr) / beta.
-    Return per unit of systematic (market) risk.
-    Useful for comparing diversified portfolios where idiosyncratic risk is low.
-    """
-    b       = beta(portfolio_returns, benchmark_returns)
-    ann_ret = annualized_return(portfolio_returns, freq)
-    return float((ann_ret - rfr) / b) if b != 0 else np.nan
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # F. CRISIS-PERIOD METRICS
@@ -416,14 +358,12 @@ def treynor_ratio(portfolio_returns: pd.Series, benchmark_returns: pd.Series,
 def named_crisis_metrics(log_returns: pd.Series, price_series: pd.Series,
                           freq: str = 'D') -> dict:
     """
-    Compute 11 metrics for each crisis in CRISIS_PERIODS.
+    For each crisis in CRISIS_PERIODS compute 6 metrics for two phases:
+      p2t (peak to trough)      : window_start  → trough_date
+      t2p (trough to recovery)  : trough_date   → first date price >= anchor
+                                  (falls back to end of available data if no recovery)
 
-    Peak logic:
-        anchor_price = price on window_start (first available trading day).
-        max_drawdown = (trough_price / anchor_price) - 1.
-        Recovery = first date >= anchor_price after the trough
-                   (searched over the FULL series, not just the window,
-                   so long recoveries are captured correctly).
+    Metrics per phase: cum_return, max_drawdown, sharpe, sortino, ulcer, calmar
     """
     results = {}
 
@@ -432,7 +372,23 @@ def named_crisis_metrics(log_returns: pd.Series, price_series: pd.Series,
     log_returns.index  = pd.to_datetime(log_returns.index)
     price_series.index = pd.to_datetime(price_series.index)
 
-    for _, crisis_key, window_start, defined_trough, window_end in CRISIS_PERIODS:
+    def _phase(k, prefix, ret, prices):
+        if len(ret) < 2:
+            for m in ('cum_return', 'max_drawdown', 'sharpe', 'sortino', 'ulcer', 'calmar'):
+                results[f'{k}_{prefix}_{m}'] = np.nan
+            return
+        ann_ret = annualized_return(ret, freq)
+        mdd     = maximum_drawdown(prices)
+        results[f'{k}_{prefix}_cum_return']   = cumulative_return(ret)
+        results[f'{k}_{prefix}_max_drawdown'] = mdd
+        results[f'{k}_{prefix}_sharpe']       = sharpe_ratio(ret, 0.0, freq)
+        results[f'{k}_{prefix}_sortino']      = sortino_ratio(ret, 0.0, freq)
+        results[f'{k}_{prefix}_ulcer']        = ulcer_index(prices)
+        results[f'{k}_{prefix}_calmar']       = (ann_ret / abs(mdd)
+                                                  if mdd != 0 and not np.isnan(mdd)
+                                                  else np.nan)
+
+    for _, crisis_key, window_start, defined_trough, _ in CRISIS_PERIODS:
         idx = price_series.index
 
         start_hits = idx[idx >= pd.Timestamp(window_start)]
@@ -443,57 +399,20 @@ def named_crisis_metrics(log_returns: pd.Series, price_series: pd.Series,
         trough_hits = idx[idx >= pd.Timestamp(defined_trough)]
         if trough_hits.empty:
             continue
+        actual_trough = trough_hits[0]
 
-        end_hits   = idx[idx >= pd.Timestamp(window_end)]
-        actual_end = end_hits[0] if not end_hits.empty else idx[-1]
-
-        crisis_prices = price_series.loc[actual_start:actual_end]
-        crisis_ret    = log_returns.loc[actual_start:actual_end]
-
-        if crisis_prices.empty or len(crisis_ret) < 2:
-            continue
-
-        # ── Anchor-based drawdown ─────────────────────────────────────────────
-        anchor_price = crisis_prices.iloc[0]
-        trough_price = crisis_prices.min()
-        trough_date  = crisis_prices.idxmin()
-        max_dd       = (trough_price / anchor_price) - 1
-
-        days_to_trough = (pd.Timestamp(trough_date) - pd.Timestamp(actual_start)).days
-
-        post_trough    = price_series.loc[trough_date:]
+        anchor_price   = price_series.loc[actual_start]
+        post_trough    = price_series.loc[actual_trough:]
         recovered_hits = post_trough[post_trough >= anchor_price]
-        if not recovered_hits.empty:
-            recovery_date           = recovered_hits.index[0]
-            days_trough_to_recovery = (pd.Timestamp(recovery_date) - pd.Timestamp(trough_date)).days
-            days_peak_to_breakeven  = (pd.Timestamp(recovery_date) - pd.Timestamp(actual_start)).days
-        else:
-            days_trough_to_recovery = np.nan
-            days_peak_to_breakeven  = np.nan
+        actual_recovery = recovered_hits.index[0] if not recovered_hits.empty else idx[-1]
 
-        # ── Per-crisis statistics ─────────────────────────────────────────────
-        ann_ret = annualized_return(crisis_ret, freq)    if len(crisis_ret) > 1 else np.nan
-        ann_vol = annualized_volatility(crisis_ret, freq) if len(crisis_ret) > 1 else np.nan
+        p2t_prices  = price_series.loc[actual_start:actual_trough]
+        p2t_returns = log_returns.loc[actual_start:actual_trough]
+        t2p_prices  = price_series.loc[actual_trough:actual_recovery]
+        t2p_returns = log_returns.loc[actual_trough:actual_recovery]
 
-        crisis_calmar = (ann_ret / abs(max_dd)
-                         if (not np.isnan(ann_ret) and max_dd != 0)
-                         else np.nan)
-        crisis_ulcer  = ulcer_index(crisis_prices)
-
-        k = crisis_key
-        results[f'{k}_max_drawdown']            = max_dd
-        results[f'{k}_days_to_trough']          = days_to_trough
-        results[f'{k}_days_trough_to_recovery'] = days_trough_to_recovery
-        results[f'{k}_days_peak_to_breakeven']  = days_peak_to_breakeven
-        results[f'{k}_crisis_cum_return']       = cumulative_return(crisis_ret)
-        results[f'{k}_crisis_ann_return']       = ann_ret
-        results[f'{k}_crisis_ann_volatility']   = ann_vol
-        results[f'{k}_crisis_sharpe']           = (sharpe_ratio(crisis_ret, 0.0, freq)
-                                                    if len(crisis_ret) > 1 else np.nan)
-        results[f'{k}_crisis_sortino']          = (sortino_ratio(crisis_ret, 0.0, freq)
-                                                    if len(crisis_ret) > 1 else np.nan)
-        results[f'{k}_crisis_calmar']           = crisis_calmar
-        results[f'{k}_crisis_ulcer_index']      = crisis_ulcer
+        _phase(crisis_key, 'p2t', p2t_returns, p2t_prices)
+        _phase(crisis_key, 't2p', t2p_returns, t2p_prices)
 
     return results
 
@@ -545,10 +464,6 @@ def compute_all_metrics(portfolio_log_returns: pd.Series,
     # ── Benchmark-relative ────────────────────────────────────────────────────
     results['beta']                  = beta(log_ret, bench_ret)
     results['alpha']                 = alpha(log_ret, bench_ret, rfr, freq)
-    results['information_ratio']     = information_ratio(log_ret, bench_ret, freq)
-    results['modified_ir']           = modified_information_ratio(log_ret, bench_ret, freq)
-    results['treynor']               = treynor_ratio(log_ret, bench_ret, rfr, freq)
-
     # ── Crisis metrics ────────────────────────────────────────────────────────
     results.update(named_crisis_metrics(log_ret, price_aligned, freq))
 
@@ -569,21 +484,18 @@ def metrics_to_dataframe(results: dict) -> pd.DataFrame:
         'maximum_drawdown'      : ('Risk',      'Maximum Drawdown',            '{:.2%}'),
         'var_95'                : ('Risk',      'Value at Risk (95%)',         '{:.2%}'),
         'cvar_95'               : ('Risk',      'CVaR / Expected Shortfall',   '{:.2%}'),
-        'ulcer_index'           : ('Risk',      'Ulcer Index (Full Period)',    '{:.4f}'),
+        'ulcer_index'           : ('Risk',      'Ulcer Index (Full Period)',   '{:.4f}'),
         'sharpe'                : ('Ratios',    'Sharpe Ratio',                '{:.3f}'),
         'sortino'               : ('Ratios',    'Sortino Ratio',               '{:.3f}'),
         'calmar'                : ('Ratios',    'Calmar Ratio',                '{:.3f}'),
         'omega'                 : ('Ratios',    'Omega Ratio',                 '{:.3f}'),
         'beta'                  : ('Benchmark', 'Beta',                        '{:.3f}'),
         'alpha'                 : ('Benchmark', 'Alpha (Annualized)',          '{:.2%}'),
-        'information_ratio'     : ('Benchmark', 'Information Ratio',           '{:.3f}'),
-        'modified_ir'           : ('Benchmark', 'Modified Information Ratio',  '{:.3f}'),
-        'treynor'               : ('Benchmark', 'Treynor Ratio',               '{:.3f}'),
     }
 
     crisis_labels = {}
     for crisis_name, crisis_key, _, _, _ in CRISIS_PERIODS:
-        for metric_suffix, metric_label, fmt in CRISIS_METRIC_LABELS:
+        for metric_suffix, metric_label, fmt in CRISIS_METRIC_LABELS_P2T + CRISIS_METRIC_LABELS_T2P:
             crisis_labels[f'{crisis_key}_{metric_suffix}'] = (crisis_name, metric_label, fmt)
 
     def _fmt(value, fmt):
@@ -762,18 +674,21 @@ def generate_dynamic_benchmark_report(portfolio_df: pd.DataFrame,
     # ── Named crisis metrics table data ──────────────────────────────────────
     _crisis_col_names = [cp[0] for cp in CRISIS_PERIODS]
     _crisis_keys      = [cp[1] for cp in CRISIS_PERIODS]
-    _tbl_m = [
-        ('max_drawdown',            'Max Drawdown',        '{:.2%}'),
-        ('days_to_trough',          'Days to Trough',      '{:.0f}'),
-        ('days_trough_to_recovery', 'Days to Recovery',    '{:.0f}'),
-        ('days_peak_to_breakeven',  'Days Peak→Breakeven', '{:.0f}'),
-        ('crisis_cum_return',       'Cum Return',          '{:.2%}'),
-        ('crisis_ann_return',       'Ann Return',          '{:.2%}'),
-        ('crisis_ann_volatility',   'Ann Volatility',      '{:.2%}'),
-        ('crisis_sharpe',           'Sharpe',              '{:.3f}'),
-        ('crisis_sortino',          'Sortino',             '{:.3f}'),
-        ('crisis_calmar',           'Calmar',              '{:.3f}'),
-        ('crisis_ulcer_index',      'Ulcer Index',         '{:.4f}'),
+    _tbl_p2t = [
+        ('p2t_cum_return',   'Cum Return',   '{:.2%}'),
+        ('p2t_max_drawdown', 'Max Drawdown', '{:.2%}'),
+        ('p2t_sharpe',       'Sharpe',       '{:.3f}'),
+        ('p2t_sortino',      'Sortino',      '{:.3f}'),
+        ('p2t_ulcer',        'Ulcer Index',  '{:.4f}'),
+        ('p2t_calmar',       'Calmar',       '{:.3f}'),
+    ]
+    _tbl_t2p = [
+        ('t2p_cum_return',   'Cum Return',   '{:.2%}'),
+        ('t2p_max_drawdown', 'Max Drawdown', '{:.2%}'),
+        ('t2p_sharpe',       'Sharpe',       '{:.3f}'),
+        ('t2p_sortino',      'Sortino',      '{:.3f}'),
+        ('t2p_ulcer',        'Ulcer Index',  '{:.4f}'),
+        ('t2p_calmar',       'Calmar',       '{:.3f}'),
     ]
 
     def _fv(v, fmt):
@@ -782,28 +697,37 @@ def generate_dynamic_benchmark_report(portfolio_df: pd.DataFrame,
         except Exception:
             return 'N/A'
 
-    _tbl_header  = ['Metric'] + _crisis_col_names
-    _metric_col  = [m[1] for m in _tbl_m]
-    _crisis_cols = [[_fv(precomputed_results.get(f'{ck}_{s}', np.nan), f)
-                     for s, _, f in _tbl_m] for ck in _crisis_keys]
-    _tbl_values  = [_metric_col] + _crisis_cols
-    _row_fills   = ['#F8F9FA' if i % 2 == 0 else '#FFFFFF' for i in range(len(_tbl_m))]
-    _tbl_fill    = [_row_fills] * len(_tbl_values)
+    _tbl_header     = ['Metric'] + _crisis_col_names
 
-    # ── 7-row subplot ─────────────────────────────────────────────────────────
+    _p2t_metric_col  = [m[1] for m in _tbl_p2t]
+    _p2t_crisis_cols = [[_fv(precomputed_results.get(f'{ck}_{s}', np.nan), f)
+                         for s, _, f in _tbl_p2t] for ck in _crisis_keys]
+    _p2t_values      = [_p2t_metric_col] + _p2t_crisis_cols
+    _p2t_fills       = ['#F8F9FA' if i % 2 == 0 else '#FFFFFF' for i in range(len(_tbl_p2t))]
+    _p2t_fill        = [_p2t_fills] * len(_p2t_values)
+
+    _t2p_metric_col  = [m[1] for m in _tbl_t2p]
+    _t2p_crisis_cols = [[_fv(precomputed_results.get(f'{ck}_{s}', np.nan), f)
+                         for s, _, f in _tbl_t2p] for ck in _crisis_keys]
+    _t2p_values      = [_t2p_metric_col] + _t2p_crisis_cols
+    _t2p_fills       = ['#F8F9FA' if i % 2 == 0 else '#FFFFFF' for i in range(len(_tbl_t2p))]
+    _t2p_fill        = [_t2p_fills] * len(_t2p_values)
+
+    # ── 8-row subplot ─────────────────────────────────────────────────────────
     fig = make_subplots(
-        rows=7, cols=1, shared_xaxes=False, vertical_spacing=0.04,
-        row_heights=[0.25, 0.08, 0.12, 0.12, 0.14, 0.12, 0.30],
+        rows=8, cols=1, shared_xaxes=False, vertical_spacing=0.04,
+        row_heights=[0.22, 0.07, 0.10, 0.10, 0.11, 0.13, 0.10, 0.28],
         subplot_titles=[
             f"Cumulative Return  —  drawdown episodes > {threshold:.0%} highlighted",
             f"Drawdown Episode Summary (threshold {threshold:.0%})",
-            "Named Crisis Periods — Key Metrics",
+            "Crisis Periods — Peak to Trough",
+            "Crisis Periods — Trough to Recovery",
             "Underwater Plot (Drawdown %)",
             "Daily Return Distribution",
             "Annual Returns",
             "Monthly Returns Heatmap",
         ],
-        specs=[[{"type": "xy"}], [{"type": "table"}], [{"type": "table"}],
+        specs=[[{"type": "xy"}], [{"type": "table"}], [{"type": "table"}], [{"type": "table"}],
                [{"type": "xy"}], [{"type": "xy"}], [{"type": "xy"}], [{"type": "xy"}]],
     )
 
@@ -865,21 +789,30 @@ def generate_dynamic_benchmark_report(portfolio_df: pd.DataFrame,
                        font=dict(color=TEXT, size=11, family="Inter, Arial"),
                        align="left", height=26, line_color=GRID)), row=2, col=1)
 
-    # Row 3: Named Crisis Metrics Table
+    # Row 3: Peak-to-Trough Crisis Metrics Table
     fig.add_trace(go.Table(
         header=dict(values=[f"<b>{h}</b>" for h in _tbl_header],
                     fill_color=TBL_HDR, font=dict(color="white", size=11, family="Inter, Arial"),
                     align="left", height=28, line_color="white"),
-        cells=dict(values=_tbl_values, fill_color=_tbl_fill,
+        cells=dict(values=_p2t_values, fill_color=_p2t_fill,
                    font=dict(color=TEXT, size=10, family="Inter, Arial"),
                    align="left", height=24, line_color=GRID)), row=3, col=1)
 
-    # Row 4: Underwater (two tables → first xy = x2/y2)
+    # Row 4: Trough-to-Recovery Crisis Metrics Table
+    fig.add_trace(go.Table(
+        header=dict(values=[f"<b>{h}</b>" for h in _tbl_header],
+                    fill_color=TBL_HDR, font=dict(color="white", size=11, family="Inter, Arial"),
+                    align="left", height=28, line_color="white"),
+        cells=dict(values=_t2p_values, fill_color=_t2p_fill,
+                   font=dict(color=TEXT, size=10, family="Inter, Arial"),
+                   align="left", height=24, line_color=GRID)), row=4, col=1)
+
+    # Row 5: Underwater (3 tables → first xy = x2/y2)
     fig.add_trace(go.Scatter(x=df.index, y=df['drawdown'], fill='tozeroy', mode='lines',
                              line=dict(color=RED, width=1), fillcolor='rgba(220,38,38,0.20)',
                              name="Drawdown",
                              hovertemplate="%{x|%b %d, %Y}<br>Drawdown: %{y:.2%}<extra></extra>"),
-                  row=4, col=1)
+                  row=5, col=1)
     fig.add_shape(type="line", x0=0, x1=1, xref="x2 domain",
                   y0=-threshold, y1=-threshold, yref="y2",
                   line=dict(dash="dash", color=SUBTEXT, width=1))
@@ -896,20 +829,20 @@ def generate_dynamic_benchmark_report(portfolio_df: pd.DataFrame,
                       fillcolor='rgba(22,163,74,0.20)', opacity=1,
                       layer='below', line_width=1.5, line_color='black')
     fig.update_yaxes(tickformat=".0%", title_text="Drawdown", gridcolor=GRID, zerolinecolor=GRID,
-                     title_font=dict(color=SUBTEXT), tickfont=dict(color=SUBTEXT), row=4, col=1)
+                     title_font=dict(color=SUBTEXT), tickfont=dict(color=SUBTEXT), row=5, col=1)
     fig.update_xaxes(dtick="M12", tickformat="%Y", tickangle=0,
-                     showgrid=False, tickfont=dict(color=SUBTEXT), row=4, col=1)
+                     showgrid=False, tickfont=dict(color=SUBTEXT), row=5, col=1)
 
-    # Row 5: Return Distribution
+    # Row 6: Return Distribution
     ret_vals = df['returns_per_day'].dropna()
     fig.add_trace(go.Histogram(x=ret_vals[ret_vals < 0], name="Negative",
                                xbins=dict(size=0.001), marker_color='rgba(220,38,38,0.70)',
                                hovertemplate="Return: %{x:.2%}<br>Count: %{y}<extra></extra>"),
-                  row=5, col=1)
+                  row=6, col=1)
     fig.add_trace(go.Histogram(x=ret_vals[ret_vals >= 0], name="Positive",
                                xbins=dict(size=0.001), marker_color='rgba(22,163,74,0.70)',
                                hovertemplate="Return: %{x:.2%}<br>Count: %{y}<extra></extra>"),
-                  row=5, col=1)
+                  row=6, col=1)
     fig.add_shape(type="line", x0=0, x1=0, xref="x3", y0=0, y1=1, yref="y3 domain",
                   line=dict(dash="dot", color=TEXT, width=1))
     mean_ret = float(ret_vals.mean())
@@ -919,25 +852,25 @@ def generate_dynamic_benchmark_report(portfolio_df: pd.DataFrame,
                        text=f"mean {mean_ret:.3%}", showarrow=False,
                        xanchor="left", yanchor="top", font=dict(color="#D97706", size=10))
     fig.update_xaxes(tickformat=".1%", title_text="Daily Return", gridcolor=GRID,
-                     tickfont=dict(color=SUBTEXT), title_font=dict(color=SUBTEXT), row=5, col=1)
+                     tickfont=dict(color=SUBTEXT), title_font=dict(color=SUBTEXT), row=6, col=1)
     fig.update_yaxes(title_text="Count", gridcolor=GRID,
-                     title_font=dict(color=SUBTEXT), tickfont=dict(color=SUBTEXT), row=5, col=1)
+                     title_font=dict(color=SUBTEXT), tickfont=dict(color=SUBTEXT), row=6, col=1)
 
-    # Row 6: Annual Returns
+    # Row 7: Annual Returns
     bar_colors = [GREEN if v >= 0 else RED for v in df_annual.values]
     fig.add_trace(go.Bar(x=[str(y) for y in df_annual.index], y=df_annual.values,
                          marker_color=bar_colors,
                          text=[f"{v:.1%}" for v in df_annual.values],
                          textposition='outside', textfont=dict(size=9, color=TEXT),
                          hovertemplate="Year: %{x}<br>Return: %{y:.2%}<extra></extra>",
-                         name="Annual Return"), row=6, col=1)
+                         name="Annual Return"), row=7, col=1)
     fig.add_shape(type="line", x0=0, x1=1, xref="x4 domain", y0=0, y1=0, yref="y4",
                   line=dict(color=SUBTEXT, width=1))
     fig.update_yaxes(tickformat=".0%", title_text="Return", gridcolor=GRID, zerolinecolor=GRID,
-                     title_font=dict(color=SUBTEXT), tickfont=dict(color=SUBTEXT), row=6, col=1)
-    fig.update_xaxes(tickfont=dict(color=SUBTEXT), showgrid=False, tickangle=-45, row=6, col=1)
+                     title_font=dict(color=SUBTEXT), tickfont=dict(color=SUBTEXT), row=7, col=1)
+    fig.update_xaxes(tickfont=dict(color=SUBTEXT), showgrid=False, tickangle=-45, row=7, col=1)
 
-    # Row 7: Monthly Heatmap
+    # Row 8: Monthly Heatmap
     abs_max = float(np.nanmax(np.abs(heat_z)))
     fig.add_trace(go.Heatmap(
         z=heat_z, x=month_names, y=heat_years,
@@ -949,11 +882,11 @@ def generate_dynamic_benchmark_report(portfolio_df: pd.DataFrame,
         showscale=True,
         colorbar=dict(tickformat=".0%", thickness=12, len=0.16, y=0.05,
                       title=dict(text="Return", font=dict(size=10, color=SUBTEXT)),
-                      tickfont=dict(size=9, color=SUBTEXT))), row=7, col=1)
+                      tickfont=dict(size=9, color=SUBTEXT))), row=8, col=1)
     fig.update_yaxes(title_text="Year", autorange="reversed",
                      title_font=dict(color=SUBTEXT), tickfont=dict(color=SUBTEXT, size=10),
-                     row=7, col=1)
-    fig.update_xaxes(tickfont=dict(color=SUBTEXT), showgrid=False, side="bottom", row=7, col=1)
+                     row=8, col=1)
+    fig.update_xaxes(tickfont=dict(color=SUBTEXT), showgrid=False, side="bottom", row=8, col=1)
 
     for ann in fig['layout']['annotations']:
         if not ann.showarrow:
