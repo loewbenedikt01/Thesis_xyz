@@ -1,4 +1,4 @@
-"""
+﻿"""
 analyze_equal_weight.py — Equal Weight Portfolio Analysis
 ==========================================================
 Imports all metric functions, crisis definitions, and plot generation
@@ -26,7 +26,6 @@ if project_root not in sys.path:
 
 from metrics import (
     CRISIS_PERIODS,
-    CRISIS_METRIC_LABELS,
     compute_all_metrics,
     metrics_to_dataframe,
     generate_dynamic_benchmark_report,
@@ -53,7 +52,6 @@ threshold_val  = 0.05
 
 FREQUENCIES = {
     'Yearly':      pd.DateOffset(years=1),
-    'Semi-Annual': pd.DateOffset(months=6),
     'Quarterly':   pd.DateOffset(months=3),
     'Monthly':     pd.DateOffset(months=1),
 }

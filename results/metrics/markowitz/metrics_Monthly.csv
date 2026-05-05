@@ -14,105 +14,111 @@ Ratios,Calmar Ratio,0.184
 Ratios,Omega Ratio,1.097
 Benchmark,Beta,0.922
 Benchmark,Alpha (Annualized),3.25%
-Benchmark,Information Ratio,0.356
-Benchmark,Modified Information Ratio,0.010
-Benchmark,Treynor Ratio,0.108
-Dotcom Crash,Max Drawdown (%),-53.42%
-Dotcom Crash,Days: Peak to Trough,852
-Dotcom Crash,Days: Trough to Breakeven,3510
-Dotcom Crash,Days: Peak to Breakeven (Total),4362
-Dotcom Crash,Cumulative Return (Crisis),-8.03%
-Dotcom Crash,Annualized Return (Crisis),-1.16%
-Dotcom Crash,Annualized Volatility (Crisis),17.45%
-Dotcom Crash,Sharpe Ratio (Crisis),-0.067
-Dotcom Crash,Sortino Ratio (Crisis),-0.094
-Dotcom Crash,Calmar Ratio (Crisis),-0.022
-Dotcom Crash,Ulcer Index (Crisis),0.3294
-GFC (Full),Max Drawdown (%),-46.88%
-GFC (Full),Days: Peak to Trough,517
-GFC (Full),Days: Trough to Breakeven,1074
-GFC (Full),Days: Peak to Breakeven (Total),1591
-GFC (Full),Cumulative Return (Crisis),19.57%
-GFC (Full),Annualized Return (Crisis),3.33%
-GFC (Full),Annualized Volatility (Crisis),21.67%
-GFC (Full),Sharpe Ratio (Crisis),0.153
-GFC (Full),Sortino Ratio (Crisis),0.216
-GFC (Full),Calmar Ratio (Crisis),0.071
-GFC (Full),Ulcer Index (Crisis),0.1871
-Early Credit Crunch,Max Drawdown (%),-46.88%
-Early Credit Crunch,Days: Peak to Trough,517
-Early Credit Crunch,Days: Trough to Breakeven,1074
-Early Credit Crunch,Days: Peak to Breakeven (Total),1591
-Early Credit Crunch,Cumulative Return (Crisis),-18.00%
-Early Credit Crunch,Annualized Return (Crisis),-7.52%
-Early Credit Crunch,Annualized Volatility (Crisis),27.36%
-Early Credit Crunch,Sharpe Ratio (Crisis),-0.275
-Early Credit Crunch,Sortino Ratio (Crisis),-0.386
-Early Credit Crunch,Calmar Ratio (Crisis),-0.160
-Early Credit Crunch,Ulcer Index (Crisis),0.2489
-Acute GFC Crash,Max Drawdown (%),-34.15%
-Acute GFC Crash,Days: Peak to Trough,175
-Acute GFC Crash,Days: Trough to Breakeven,301
-Acute GFC Crash,Days: Peak to Breakeven (Total),476
-Acute GFC Crash,Cumulative Return (Crisis),-2.94%
-Acute GFC Crash,Annualized Return (Crisis),-1.84%
-Acute GFC Crash,Annualized Volatility (Crisis),31.17%
-Acute GFC Crash,Sharpe Ratio (Crisis),-0.059
-Acute GFC Crash,Sortino Ratio (Crisis),-0.084
-Acute GFC Crash,Calmar Ratio (Crisis),-0.054
-Acute GFC Crash,Ulcer Index (Crisis),0.1685
-European Debt + US Debt Ceiling,Max Drawdown (%),-12.03%
-European Debt + US Debt Ceiling,Days: Peak to Trough,70
-European Debt + US Debt Ceiling,Days: Trough to Breakeven,80
-European Debt + US Debt Ceiling,Days: Peak to Breakeven (Total),150
-European Debt + US Debt Ceiling,Cumulative Return (Crisis),29.23%
-European Debt + US Debt Ceiling,Annualized Return (Crisis),14.25%
-European Debt + US Debt Ceiling,Annualized Volatility (Crisis),16.89%
-European Debt + US Debt Ceiling,Sharpe Ratio (Crisis),0.844
-European Debt + US Debt Ceiling,Sortino Ratio (Crisis),1.181
-European Debt + US Debt Ceiling,Calmar Ratio (Crisis),1.185
-European Debt + US Debt Ceiling,Ulcer Index (Crisis),0.0435
-Monetary Policy,Max Drawdown (%),-19.05%
-Monetary Policy,Days: Peak to Trough,94
-Monetary Policy,Days: Trough to Breakeven,176
-Monetary Policy,Days: Peak to Breakeven (Total),270
-Monetary Policy,Cumulative Return (Crisis),-1.22%
-Monetary Policy,Annualized Return (Crisis),-2.10%
-Monetary Policy,Annualized Volatility (Crisis),20.54%
-Monetary Policy,Sharpe Ratio (Crisis),-0.102
-Monetary Policy,Sortino Ratio (Crisis),-0.143
-Monetary Policy,Calmar Ratio (Crisis),-0.110
-Monetary Policy,Ulcer Index (Crisis),0.0805
-COVID-19,Max Drawdown (%),-31.43%
-COVID-19,Days: Peak to Trough,33
-COVID-19,Days: Trough to Breakeven,119
-COVID-19,Days: Peak to Breakeven (Total),152
-COVID-19,Cumulative Return (Crisis),5.27%
-COVID-19,Annualized Return (Crisis),11.10%
-COVID-19,Annualized Volatility (Crisis),45.96%
-COVID-19,Sharpe Ratio (Crisis),0.241
-COVID-19,Sortino Ratio (Crisis),0.329
-COVID-19,Calmar Ratio (Crisis),0.353
-COVID-19,Ulcer Index (Crisis),0.1203
-Russia/Ukraine,Max Drawdown (%),-28.13%
-Russia/Ukraine,Days: Peak to Trough,367
-Russia/Ukraine,Days: Trough to Breakeven,369
-Russia/Ukraine,Days: Peak to Breakeven (Total),736
-Russia/Ukraine,Cumulative Return (Crisis),4.49%
-Russia/Ukraine,Annualized Return (Crisis),2.18%
-Russia/Ukraine,Annualized Volatility (Crisis),20.29%
-Russia/Ukraine,Sharpe Ratio (Crisis),0.107
-Russia/Ukraine,Sortino Ratio (Crisis),0.148
-Russia/Ukraine,Calmar Ratio (Crisis),0.077
-Russia/Ukraine,Ulcer Index (Crisis),0.1633
-Trade Policy Shock,Max Drawdown (%),-18.35%
-Trade Policy Shock,Days: Peak to Trough,48
-Trade Policy Shock,Days: Trough to Breakeven,86
-Trade Policy Shock,Days: Peak to Breakeven (Total),134
-Trade Policy Shock,Cumulative Return (Crisis),-1.21%
-Trade Policy Shock,Annualized Return (Crisis),-3.39%
-Trade Policy Shock,Annualized Volatility (Crisis),26.16%
-Trade Policy Shock,Sharpe Ratio (Crisis),-0.129
-Trade Policy Shock,Sortino Ratio (Crisis),-0.186
-Trade Policy Shock,Calmar Ratio (Crisis),-0.185
-Trade Policy Shock,Ulcer Index (Crisis),0.0875
+Dotcom Crash,Cum Return (Peak→Trough),-50.19%
+Dotcom Crash,Max Drawdown (Peak→Trough),-53.97%
+Dotcom Crash,Sharpe (Peak→Trough),-0.997
+Dotcom Crash,Sortino (Peak→Trough),-1.356
+Dotcom Crash,Ulcer Index (Peak→Trough),0.3140
+Dotcom Crash,Calmar (Peak→Trough),-0.445
+Dotcom Crash,Cum Return (Trough→Recovery),102.11%
+Dotcom Crash,Max Drawdown (Trough→Recovery),-46.94%
+Dotcom Crash,Sharpe (Trough→Recovery),0.418
+Dotcom Crash,Sortino (Trough→Recovery),0.597
+Dotcom Crash,Ulcer Index (Trough→Recovery),0.1442
+Dotcom Crash,Calmar (Trough→Recovery),0.166
+GFC (Full),Cum Return (Peak→Trough),-46.48%
+GFC (Full),Max Drawdown (Peak→Trough),-46.94%
+GFC (Full),Sharpe (Peak→Trough),-1.064
+GFC (Full),Sortino (Peak→Trough),-1.451
+GFC (Full),Ulcer Index (Peak→Trough),0.2186
+GFC (Full),Calmar (Peak→Trough),-0.762
+GFC (Full),Cum Return (Trough→Recovery),84.05%
+GFC (Full),Max Drawdown (Trough→Recovery),-12.34%
+GFC (Full),Sharpe (Trough→Recovery),1.359
+GFC (Full),Sortino (Trough→Recovery),1.991
+GFC (Full),Ulcer Index (Trough→Recovery),0.0381
+GFC (Full),Calmar (Trough→Recovery),1.860
+Early Credit Crunch,Cum Return (Peak→Trough),-18.72%
+Early Credit Crunch,Max Drawdown (Peak→Trough),-20.52%
+Early Credit Crunch,Sharpe (Peak→Trough),-1.019
+Early Credit Crunch,Sortino (Peak→Trough),-1.348
+Early Credit Crunch,Ulcer Index (Peak→Trough),0.1176
+Early Credit Crunch,Calmar (Peak→Trough),-0.967
+Early Credit Crunch,Cum Return (Trough→Recovery),19.50%
+Early Credit Crunch,Max Drawdown (Trough→Recovery),-36.07%
+Early Credit Crunch,Sharpe (Trough→Recovery),0.215
+Early Credit Crunch,Sortino (Trough→Recovery),0.304
+Early Credit Crunch,Ulcer Index (Trough→Recovery),0.1212
+Early Credit Crunch,Calmar (Trough→Recovery),0.148
+Acute GFC Crash,Cum Return (Peak→Trough),-36.64%
+Acute GFC Crash,Max Drawdown (Peak→Trough),-36.07%
+Acute GFC Crash,Sharpe (Peak→Trough),-1.200
+Acute GFC Crash,Sortino (Peak→Trough),-1.643
+Acute GFC Crash,Ulcer Index (Peak→Trough),0.2084
+Acute GFC Crash,Calmar (Peak→Trough),-1.701
+Acute GFC Crash,Cum Return (Trough→Recovery),48.23%
+Acute GFC Crash,Max Drawdown (Trough→Recovery),-4.73%
+Acute GFC Crash,Sharpe (Trough→Recovery),3.484
+Acute GFC Crash,Sortino (Trough→Recovery),5.946
+Acute GFC Crash,Ulcer Index (Trough→Recovery),0.0149
+Acute GFC Crash,Calmar (Trough→Recovery),12.836
+European Debt + US Debt Ceiling,Cum Return (Peak→Trough),9.74%
+European Debt + US Debt Ceiling,Max Drawdown (Peak→Trough),-12.34%
+European Debt + US Debt Ceiling,Sharpe (Peak→Trough),0.384
+European Debt + US Debt Ceiling,Sortino (Peak→Trough),0.523
+European Debt + US Debt Ceiling,Ulcer Index (Peak→Trough),0.0471
+European Debt + US Debt Ceiling,Calmar (Peak→Trough),0.536
+European Debt + US Debt Ceiling,Cum Return (Trough→Recovery),N/A
+European Debt + US Debt Ceiling,Max Drawdown (Trough→Recovery),N/A
+European Debt + US Debt Ceiling,Sharpe (Trough→Recovery),N/A
+European Debt + US Debt Ceiling,Sortino (Trough→Recovery),N/A
+European Debt + US Debt Ceiling,Ulcer Index (Trough→Recovery),N/A
+European Debt + US Debt Ceiling,Calmar (Trough→Recovery),N/A
+Monetary Policy,Cum Return (Peak→Trough),-19.19%
+Monetary Policy,Max Drawdown (Peak→Trough),-19.33%
+Monetary Policy,Sharpe (Peak→Trough),-2.323
+Monetary Policy,Sortino (Peak→Trough),-2.776
+Monetary Policy,Ulcer Index (Peak→Trough),0.0737
+Monetary Policy,Calmar (Peak→Trough),-2.908
+Monetary Policy,Cum Return (Trough→Recovery),20.32%
+Monetary Policy,Max Drawdown (Trough→Recovery),-6.37%
+Monetary Policy,Sharpe (Trough→Recovery),2.973
+Monetary Policy,Sortino (Trough→Recovery),5.051
+Monetary Policy,Ulcer Index (Trough→Recovery),0.0145
+Monetary Policy,Calmar (Trough→Recovery),7.380
+COVID-19,Cum Return (Peak→Trough),-30.96%
+COVID-19,Max Drawdown (Peak→Trough),-31.43%
+COVID-19,Sharpe (Peak→Trough),-1.209
+COVID-19,Sortino (Peak→Trough),-1.421
+COVID-19,Ulcer Index (Peak→Trough),0.1715
+COVID-19,Calmar (Peak→Trough),-3.117
+COVID-19,Cum Return (Trough→Recovery),43.09%
+COVID-19,Max Drawdown (Trough→Recovery),-5.52%
+COVID-19,Sharpe (Trough→Recovery),6.058
+COVID-19,Sortino (Trough→Recovery),11.139
+COVID-19,Ulcer Index (Trough→Recovery),0.0179
+COVID-19,Calmar (Trough→Recovery),35.657
+Russia/Ukraine,Cum Return (Peak→Trough),-26.72%
+Russia/Ukraine,Max Drawdown (Peak→Trough),-27.90%
+Russia/Ukraine,Sharpe (Peak→Trough),-1.266
+Russia/Ukraine,Sortino (Peak→Trough),-1.617
+Russia/Ukraine,Ulcer Index (Peak→Trough),0.1693
+Russia/Ukraine,Calmar (Peak→Trough),-1.181
+Russia/Ukraine,Cum Return (Trough→Recovery),38.77%
+Russia/Ukraine,Max Drawdown (Trough→Recovery),-10.34%
+Russia/Ukraine,Sharpe (Trough→Recovery),1.938
+Russia/Ukraine,Sortino (Trough→Recovery),3.097
+Russia/Ukraine,Ulcer Index (Trough→Recovery),0.0326
+Russia/Ukraine,Calmar (Trough→Recovery),2.931
+Trade Policy Shock,Cum Return (Peak→Trough),-17.98%
+Trade Policy Shock,Max Drawdown (Peak→Trough),-18.35%
+Trade Policy Shock,Sharpe (Peak→Trough),-2.855
+Trade Policy Shock,Sortino (Peak→Trough),-2.975
+Trade Policy Shock,Ulcer Index (Peak→Trough),0.0979
+Trade Policy Shock,Calmar (Peak→Trough),-4.143
+Trade Policy Shock,Cum Return (Trough→Recovery),22.24%
+Trade Policy Shock,Max Drawdown (Trough→Recovery),-4.43%
+Trade Policy Shock,Sharpe (Trough→Recovery),5.674
+Trade Policy Shock,Sortino (Trough→Recovery),12.548
+Trade Policy Shock,Ulcer Index (Trough→Recovery),0.0108
+Trade Policy Shock,Calmar (Trough→Recovery),29.895

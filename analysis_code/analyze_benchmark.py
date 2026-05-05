@@ -1,4 +1,4 @@
-"""
+﻿"""
 analyze_benchmark.py — S&P 500 Buy & Hold Analysis
 ====================================================
 Imports all metric functions, crisis definitions, and plot generation
@@ -27,7 +27,6 @@ if project_root not in sys.path:
 
 from metrics import (
     CRISIS_PERIODS,
-    CRISIS_METRIC_LABELS,
     compute_all_metrics,
     metrics_to_dataframe,
     generate_dynamic_benchmark_report,

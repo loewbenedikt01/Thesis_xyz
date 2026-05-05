@@ -3,20 +3,15 @@ analyze_lstm.py — LSTM Portfolio Analysis
 ==========================================
 Imports all metric functions, crisis definitions, and plot generation
 from metrics.py. This script retains LSTM-specific logic:
-  - load_and_average_runs()         : averages log returns across RUN_NUMBER seeds
-  - load_and_average_stats()        : averages prediction quality stats across seeds
+  - load_runs()                    : loads pre-averaged portfolio CSV
+  - load_stats()                   : loads pre-averaged statistics CSV
   - generate_lstm_statistics_report(): time-series + summary table for DA, Spearman etc.
-
-LSTM filename convention differs from RF/XGB:
-  portfolio_lstm_{freq}_run{N}.csv          (not portfolio_lstm_{freq}_{N}.csv)
-  portfolio_lstm_{freq}_run{N}_statistics.csv
 
 Place metrics.py in the project root (Thesis_xyz/) so the import works.
 """
 
 import sys
 import pandas as pd
-import numpy as np
 import plotly.graph_objects as go
 from pathlib import Path
 
@@ -29,7 +24,6 @@ if project_root not in sys.path:
 
 from metrics import (
     CRISIS_PERIODS,
-    CRISIS_METRIC_LABELS,
     compute_all_metrics,
     metrics_to_dataframe,
     generate_dynamic_benchmark_report,
@@ -39,7 +33,10 @@ from metrics import (
 # ─────────────────────────────────────────────────────────────────────────────
 # PATHS
 # ─────────────────────────────────────────────────────────────────────────────
-DATA_PATH          = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
+script_dir = Path(__file__).resolve().parent
+
+# DATA_PATH = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
+DATA_PATH          = script_dir.parent
 output_dir_metrics = DATA_PATH / "results" / "metrics" / "lstm"
 output_dir_plots   = DATA_PATH / "results" / "plots"   / "lstm"
 output_dir_metrics.mkdir(parents=True, exist_ok=True)
@@ -54,71 +51,37 @@ end_date       = "2025-12-31"
 risk_free_rate = 0.0
 threshold_val  = 0.05
 
-# Which run numbers to include in the average.
-# Add more integers as you produce additional runs (e.g. [1, 2, 3]).
-RUN_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-
 FREQUENCIES = {
     'Yearly':      pd.DateOffset(years=1),
-    'Semi-Annual': pd.DateOffset(months=6),
-    'Quarterly': pd.DateOffset(months=3),
-    'Monthly': pd.DateOffset(months=1),
-    # Quarterly and Monthly omitted for LSTM — too slow and too noisy.
-    # Re-add here if you produce those run files.
+    'Quarterly':   pd.DateOffset(months=3),
+    'Monthly':     pd.DateOffset(months=1),
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# LSTM-SPECIFIC: MULTI-RUN LOADERS
-# Note: LSTM files use the "run{N}" suffix convention, not "_{N}".
-#   portfolio_lstm_{freq}_run{N}.csv
-#   portfolio_lstm_{freq}_run{N}_statistics.csv
+# LSTM-SPECIFIC: LOADERS
 # ─────────────────────────────────────────────────────────────────────────────
-def load_and_average_runs(freq_name: str):
+def load_runs(freq_name: str):
     """
-    Load all portfolio_lstm_{freq}_run{N}.csv files for run numbers in
-    RUN_NUMBERS, average log_return across runs on common dates, recompute
-    cumulative_value. Returns (df, n_runs).
+    Load portfolio_lstm_{freq}.csv (pre-averaged file produced by the model).
+    Returns (df, 1) or (None, 0) if missing.
     """
-    dfs = []
-    for run in RUN_NUMBERS:
-        p = DATA_DIR / f"portfolio_lstm_{freq_name}_run{run}.csv"
-        if not p.exists():
-            continue
-        df = pd.read_csv(p, index_col='date', parse_dates=True).sort_index()
-        df = df.loc[start_date:end_date].dropna(subset=['log_return'])
-        dfs.append(df['log_return'])
-
-    if not dfs:
+    p = DATA_DIR / f"portfolio_lstm_{freq_name}.csv"
+    if not p.exists():
         return None, 0
-    avg_log = pd.concat(dfs, axis=1).mean(axis=1).dropna()
-    avg_cum = np.exp(avg_log.cumsum())
-    avg_df  = pd.DataFrame({'log_return': avg_log, 'cumulative_value': avg_cum})
-    return avg_df, len(dfs)
+    df = pd.read_csv(p, index_col='date', parse_dates=True).sort_index()
+    df = df.loc[start_date:end_date].dropna(subset=['log_return'])
+    return df[['log_return', 'cumulative_value']], 1
 
 
-def load_and_average_stats(freq_name: str):
+def load_stats(freq_name: str):
     """
-    Load all portfolio_lstm_{freq}_run{N}_statistics.csv files and average
-    numeric prediction quality columns per rebalance_date across runs.
-    Returns averaged DataFrame or None.
+    Load portfolio_lstm_{freq}_statistics.csv (pre-averaged file produced by the model).
+    Returns DataFrame or None if missing.
     """
-    STAT_COLS = [
-        'best_nodes', 'best_dropout', 'best_lr', 'best_val_loss',
-        'RMSE', 'MSE', 'MAE', 'R2_rank', 'R2_raw_vs_zero',
-        'Spearman', 'Directional_Accuracy', 'Geometric_Score',
-    ]
-    dfs = []
-    for run in RUN_NUMBERS:
-        p = DATA_DIR / f"portfolio_lstm_{freq_name}_run{run}_statistics.csv"
-        if not p.exists():
-            continue
-        dfs.append(pd.read_csv(p, parse_dates=['rebalance_date']))
-
-    if not dfs:
+    p = DATA_DIR / f"portfolio_lstm_{freq_name}_statistics.csv"
+    if not p.exists():
         return None
-    combined = pd.concat(dfs, ignore_index=True)
-    existing = [c for c in STAT_COLS if c in combined.columns]
-    return combined.groupby('rebalance_date')[existing].mean().reset_index()
+    return pd.read_csv(p, parse_dates=['rebalance_date'])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -235,12 +198,12 @@ all_divs = []
 
 for freq_name in FREQUENCIES:
 
-    # ── Load & average runs ───────────────────────────────────────────────────
-    df_port, n_runs = load_and_average_runs(freq_name)
+    # ── Load portfolio ────────────────────────────────────────────────────────
+    df_port, _ = load_runs(freq_name)
     if df_port is None:
         print(f"Skipping {freq_name}: no run files found.")
         continue
-    print(f"[{freq_name}] Loaded & averaged {n_runs} run(s).")
+    print(f"[{freq_name}] Loaded.")
 
     log_ret   = df_port['log_return']
     price_ser = df_port['cumulative_value']
@@ -260,26 +223,23 @@ for freq_name in FREQUENCIES:
     df_metrics.to_csv(metrics_file, index=False)
     print(f"[{freq_name}] Metrics exported.")
 
-    # ── Step 3: load, average, export statistics ──────────────────────────────
-    stats_df = load_and_average_stats(freq_name)
+    # ── Step 3: load, export statistics ──────────────────────────────────────
+    stats_df = load_stats(freq_name)
     if stats_df is not None:
         stats_file = output_dir_metrics / f"statistics_{freq_name}.csv"
         stats_df.to_csv(stats_file, index=False)
         print(f"[{freq_name}] Statistics exported.")
 
     # ── Step 4: build HTML sections ───────────────────────────────────────────
-    run_label = f"avg of {n_runs} run{'s' if n_runs > 1 else ''}"
-
     section_title = (
         f'<h2 style="font-family:Inter,Arial,sans-serif;color:#1E293B;'
-        f'margin:40px 0 8px 70px">LSTM  ·  {freq_name} Rebalancing  '
-        f'<small style="font-size:0.6em;color:#64748B">({run_label})</small></h2>'
+        f'margin:40px 0 8px 70px">LSTM  ·  {freq_name} Rebalancing</h2>'
     )
 
     div = generate_dynamic_benchmark_report(
         portfolio_df        = df_port,
         precomputed_results = results,
-        title               = f"LSTM  ·  {freq_name} Rebalancing  ({run_label})",
+        title               = f"LSTM  ·  {freq_name} Rebalancing",
         threshold           = threshold_val,
     )
 
