@@ -35,7 +35,10 @@ from metrics import (
 # ─────────────────────────────────────────────────────────────────────────────
 # PATHS
 # ─────────────────────────────────────────────────────────────────────────────
-DATA_PATH            = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
+script_dir = Path(__file__).resolve().parent
+
+# DATA_PATH = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
+DATA_PATH            = script_dir.parent
 benchmark_price_file = DATA_PATH / "benchmark_price.parquet"
 output_dir_data      = DATA_PATH / "results" / "data"    / "benchmark"
 output_dir_metrics   = DATA_PATH / "results" / "metrics" / "benchmark"
@@ -84,7 +87,8 @@ portfolio['log_returns_per_day'] = np.log(portfolio['price'] / portfolio['price'
 portfolio.index      = portfolio.index.strftime('%Y-%m-%d')
 portfolio.index.name = 'date'
 portfolio            = portfolio.dropna()
-portfolio            = portfolio[['ticker', 'price', 'returns_per_day', 'log_returns_per_day']]
+portfolio['cumulative_value'] = np.exp(portfolio['log_returns_per_day'].cumsum())
+portfolio            = portfolio[['ticker', 'price', 'returns_per_day', 'log_returns_per_day', 'cumulative_value']]
 
 portfolio.to_csv(data_file)
 print(f"Portfolio data exported to: {data_file}")
@@ -144,26 +148,34 @@ print(f"\n{_SEP}")
 print("  CRISIS PERIOD METRICS")
 print(_SEP)
 
-_crisis_print_keys = [
-    ('max_drawdown',            'Max Drawdown',       '{:.2%}'),
-    ('days_to_trough',          'Days to Trough',     '{:.0f}'),
-    ('days_trough_to_recovery', 'Days to Recovery',   '{:.0f}'),
-    ('days_peak_to_breakeven',  'Peak to Breakeven',  '{:.0f}'),
-    ('crisis_cum_return',       'Cum Return',         '{:.2%}'),
-    ('crisis_ann_return',       'Ann Return',         '{:.2%}'),
-    ('crisis_ann_volatility',   'Ann Volatility',     '{:.2%}'),
-    ('crisis_sharpe',           'Sharpe',             '{:.3f}'),
-    ('crisis_sortino',          'Sortino',            '{:.3f}'),
-    ('crisis_calmar',           'Calmar',             '{:.3f}'),
-    ('crisis_ulcer_index',      'Ulcer Index',        '{:.4f}'),
+_p2t_keys = [
+    ('p2t_cum_return',   'Cum Return',   '{:.2%}'),
+    ('p2t_max_drawdown', 'Max Drawdown', '{:.2%}'),
+    ('p2t_sharpe',       'Sharpe',       '{:.3f}'),
+    ('p2t_sortino',      'Sortino',      '{:.3f}'),
+    ('p2t_ulcer',        'Ulcer Index',  '{:.4f}'),
+    ('p2t_calmar',       'Calmar',       '{:.3f}'),
+]
+_t2p_keys = [
+    ('t2p_cum_return',   'Cum Return',   '{:.2%}'),
+    ('t2p_max_drawdown', 'Max Drawdown', '{:.2%}'),
+    ('t2p_sharpe',       'Sharpe',       '{:.3f}'),
+    ('t2p_sortino',      'Sortino',      '{:.3f}'),
+    ('t2p_ulcer',        'Ulcer Index',  '{:.4f}'),
+    ('t2p_calmar',       'Calmar',       '{:.3f}'),
 ]
 
 for _cname, _ckey, _cs, _ct, _ce in CRISIS_PERIODS:
     print(f"\n  {_cname}  [{_cs}  ->  trough {_ct}  ->  {_ce}]")
     print(f"  {_SEP2}")
-    for _suffix, _lbl, _fmt in _crisis_print_keys:
+    print(f"    {'Peak to Trough':}")
+    for _suffix, _lbl, _fmt in _p2t_keys:
         _v = results.get(f'{_ckey}_{_suffix}', float('nan'))
-        print(f"    {_lbl:<28} {_fmtv(_v, _fmt)}")
+        print(f"      {_lbl:<26} {_fmtv(_v, _fmt)}")
+    print(f"    {'Trough to Recovery':}")
+    for _suffix, _lbl, _fmt in _t2p_keys:
+        _v = results.get(f'{_ckey}_{_suffix}', float('nan'))
+        print(f"      {_lbl:<26} {_fmtv(_v, _fmt)}")
 
 print(f"\n{_SEP}\n")
 
