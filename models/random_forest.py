@@ -58,8 +58,8 @@ PARAM_GRID = {
 
 FREQUENCIES = {
     #'Yearly':      (pd.DateOffset(years=1),  252),
-    #'Quarterly':   (pd.DateOffset(months=3),  63),
-    'Monthly':     (pd.DateOffset(months=1),  21),
+    'Quarterly':   (pd.DateOffset(months=3),  63),
+    #'Monthly':     (pd.DateOffset(months=1),  21),
 }
 
 start_invest = pd.Timestamp("1998-01-01")
