@@ -13,7 +13,6 @@ DET_ID_COLS  = ["rebalance_date", "invest_year", "select_year", "ticker"]
 FREQUENCIES = {
     "Monthly":     "Monthly",
     "Quarterly":   "Quarterly",
-    "Semi-Annual": "Semi-Annual",
     "Yearly":      "Yearly",
 }
 
