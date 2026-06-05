@@ -38,18 +38,12 @@ GFC (Full),Sharpe (Trough→Recovery),1.359
 GFC (Full),Sortino (Trough→Recovery),1.991
 GFC (Full),Ulcer Index (Trough→Recovery),0.0381
 GFC (Full),Calmar (Trough→Recovery),1.860
-Early Credit Crunch,Cum Return (Peak→Trough),-18.72%
-Early Credit Crunch,Max Drawdown (Peak→Trough),-20.52%
-Early Credit Crunch,Sharpe (Peak→Trough),-1.019
-Early Credit Crunch,Sortino (Peak→Trough),-1.348
-Early Credit Crunch,Ulcer Index (Peak→Trough),0.1176
-Early Credit Crunch,Calmar (Peak→Trough),-0.967
-Early Credit Crunch,Cum Return (Trough→Recovery),19.50%
-Early Credit Crunch,Max Drawdown (Trough→Recovery),-36.07%
-Early Credit Crunch,Sharpe (Trough→Recovery),0.215
-Early Credit Crunch,Sortino (Trough→Recovery),0.304
-Early Credit Crunch,Ulcer Index (Trough→Recovery),0.1212
-Early Credit Crunch,Calmar (Trough→Recovery),0.148
+Early Credit Crunch,Cum Return (Start→End),-18.72%
+Early Credit Crunch,Max Drawdown (Start→End),-20.52%
+Early Credit Crunch,Sharpe (Start→End),-1.019
+Early Credit Crunch,Sortino (Start→End),-1.348
+Early Credit Crunch,Ulcer Index (Start→End),0.1176
+Early Credit Crunch,Calmar (Start→End),-0.967
 Acute GFC Crash,Cum Return (Peak→Trough),-36.64%
 Acute GFC Crash,Max Drawdown (Peak→Trough),-36.07%
 Acute GFC Crash,Sharpe (Peak→Trough),-1.200
@@ -62,18 +56,12 @@ Acute GFC Crash,Sharpe (Trough→Recovery),3.484
 Acute GFC Crash,Sortino (Trough→Recovery),5.946
 Acute GFC Crash,Ulcer Index (Trough→Recovery),0.0149
 Acute GFC Crash,Calmar (Trough→Recovery),12.836
-European Debt + US Debt Ceiling,Cum Return (Peak→Trough),9.74%
-European Debt + US Debt Ceiling,Max Drawdown (Peak→Trough),-12.34%
-European Debt + US Debt Ceiling,Sharpe (Peak→Trough),0.384
-European Debt + US Debt Ceiling,Sortino (Peak→Trough),0.523
-European Debt + US Debt Ceiling,Ulcer Index (Peak→Trough),0.0471
-European Debt + US Debt Ceiling,Calmar (Peak→Trough),0.536
-European Debt + US Debt Ceiling,Cum Return (Trough→Recovery),N/A
-European Debt + US Debt Ceiling,Max Drawdown (Trough→Recovery),N/A
-European Debt + US Debt Ceiling,Sharpe (Trough→Recovery),N/A
-European Debt + US Debt Ceiling,Sortino (Trough→Recovery),N/A
-European Debt + US Debt Ceiling,Ulcer Index (Trough→Recovery),N/A
-European Debt + US Debt Ceiling,Calmar (Trough→Recovery),N/A
+European Debt + US Debt Ceiling,Cum Return (Start→End),29.23%
+European Debt + US Debt Ceiling,Max Drawdown (Start→End),-12.34%
+European Debt + US Debt Ceiling,Sharpe (Start→End),0.844
+European Debt + US Debt Ceiling,Sortino (Start→End),1.181
+European Debt + US Debt Ceiling,Ulcer Index (Start→End),0.0435
+European Debt + US Debt Ceiling,Calmar (Start→End),1.155
 Monetary Policy,Cum Return (Peak→Trough),-19.19%
 Monetary Policy,Max Drawdown (Peak→Trough),-19.33%
 Monetary Policy,Sharpe (Peak→Trough),-2.323
@@ -98,18 +86,18 @@ COVID-19,Sharpe (Trough→Recovery),6.058
 COVID-19,Sortino (Trough→Recovery),11.139
 COVID-19,Ulcer Index (Trough→Recovery),0.0179
 COVID-19,Calmar (Trough→Recovery),35.657
-Russia/Ukraine,Cum Return (Peak→Trough),-26.72%
-Russia/Ukraine,Max Drawdown (Peak→Trough),-27.90%
-Russia/Ukraine,Sharpe (Peak→Trough),-1.266
-Russia/Ukraine,Sortino (Peak→Trough),-1.617
-Russia/Ukraine,Ulcer Index (Peak→Trough),0.1693
-Russia/Ukraine,Calmar (Peak→Trough),-1.181
-Russia/Ukraine,Cum Return (Trough→Recovery),38.77%
-Russia/Ukraine,Max Drawdown (Trough→Recovery),-10.34%
-Russia/Ukraine,Sharpe (Trough→Recovery),1.938
-Russia/Ukraine,Sortino (Trough→Recovery),3.097
-Russia/Ukraine,Ulcer Index (Trough→Recovery),0.0326
-Russia/Ukraine,Calmar (Trough→Recovery),2.931
+Inflation and Rate Hike Cycle,Cum Return (Peak→Trough),-26.72%
+Inflation and Rate Hike Cycle,Max Drawdown (Peak→Trough),-27.90%
+Inflation and Rate Hike Cycle,Sharpe (Peak→Trough),-1.266
+Inflation and Rate Hike Cycle,Sortino (Peak→Trough),-1.617
+Inflation and Rate Hike Cycle,Ulcer Index (Peak→Trough),0.1693
+Inflation and Rate Hike Cycle,Calmar (Peak→Trough),-1.181
+Inflation and Rate Hike Cycle,Cum Return (Trough→Recovery),38.77%
+Inflation and Rate Hike Cycle,Max Drawdown (Trough→Recovery),-10.34%
+Inflation and Rate Hike Cycle,Sharpe (Trough→Recovery),1.938
+Inflation and Rate Hike Cycle,Sortino (Trough→Recovery),3.097
+Inflation and Rate Hike Cycle,Ulcer Index (Trough→Recovery),0.0326
+Inflation and Rate Hike Cycle,Calmar (Trough→Recovery),2.931
 Trade Policy Shock,Cum Return (Peak→Trough),-17.98%
 Trade Policy Shock,Max Drawdown (Peak→Trough),-18.35%
 Trade Policy Shock,Sharpe (Peak→Trough),-2.855

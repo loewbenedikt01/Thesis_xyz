@@ -1,163 +1,159 @@
-Structure of the Program (includign output and uncoded yet)
+# Thesis Portfolio Analysis
 
+Compares portfolio construction strategies (Equal Weight, Market Cap, HRP, Markowitz, LSTM, Random Forest, XGBoost) against an S&P 500 buy-and-hold benchmark across three rebalancing frequencies: Monthly, Quarterly, Yearly.
 
+---
 
-Thesis_xyz
-    analysis                        # Folder
-        analyze_benchmark.py                # Run individually - calculates metrics, plots, etc.
-        analyze_equal_weight.py             # Run individually - calculates metrics, plots, etc.
-        analyze_hrp.py                      # Run individually - calculates metrics, plots, etc.
-        analyze_lstm.py                     # Run individually - calculates metrics, plots, etc.
-        analyze_market_cap.py               # Run individually - calculates metrics, plots, etc.
-        analyze_markowitz_unconstrained.py  # Run individually - calculates metrics, plots, etc.
-        analyze_markowitz.py                # Run individually - calculates metrics, plots, etc.
-        analyze_random_forest.py            # Run individually - calculates metrics, plots, etc.
-        analyze_xgboost.py                  # Run individually - calculates metrics, plots, etc.
-        analyze_ml_models.py                # Run individually - calculates metrics, plots, etc.
-        analyze_all_models.py               # Run individually - compares metrics, plots, etc.
-    claude_updates                  # Folder
-        benchmark                   # Showcase updates on what has happened in each model
-        equal_weight                # Showcase updates on what has happened in each model
-        hrp                         # Showcase updates on what has happened in each model
-        lstm                        # Showcase updates on what has happened in each model
-        market_cap                  # Showcase updates on what has happened in each model
-        markowitz_unconstrained     # Showcase updates on what has happened in each model
-        markowitz                   # Showcase updates on what has happened in each model
-    	random_forest               # Showcase updates on what has happened in each model
-        xgboost                     # Showcase updates on what has happened in each model
-    models                          # Folder
-        benchmark.py                # Run individually
-        equal_weight.py             # Run individually
-        hrp.py                      # Run individually
-        lstm.py                     # Run individually
-        market_cap.py               # Run individually
-        markowitz_unconstrained.py  # Run individually
-        markowitz.py                # Run individually
-        random_forest.py            # Run individually
-        xgboost.py                  # Run individually
-    results                     # Folder    
-        metrics                # Folder
-            benchmark			        # Folder
-                returns_buy_hold        # CSV, log return per day of the portfolio
-            equal_weight			    # Folder
-                returns_monthly         # CSV, log return per day of the portfolio
-                returns_quarterly       # CSV, log return per day of the portfolio
-                returns_semi-annual     # CSV, log return per day of the portfolio
-                returns_annual          # CSV, log return per day of the portfolio
-            hrp				            # Folder
-                returns_monthly         # CSV, log return per day of the portfolio
-                returns_quarterly       # CSV, log return per day of the portfolio
-                returns_semi-annual     # CSV, log return per day of the portfolio
-                returns_annual          # CSV, log return per day of the portfolio
-            lstm				        # Folder
-                run_01                  # Folder, for each run, create a new one (10) in total
-                    returns_monthly         # CSV, log return per day of the portfolio
-                    returns_quarterly       # CSV, log return per day of the portfolio
-                    returns_semi-annual     # CSV, log return per day of the portfolio
-                    returns_annual          # CSV, log return per day of the portfolio
-            market_cap			        # Folder
-                returns_monthly         # CSV, log return per day of the portfolio
-                returns_quarterly       # CSV, log return per day of the portfolio
-                returns_semi-annual     # CSV, log return per day of the portfolio
-                returns_annual          # CSV, log return per day of the portfolio
-            markowitz_unconstrained	    # Folder
-                returns_monthly         # CSV, log return per day of the portfolio
-                returns_quarterly       # CSV, log return per day of the portfolio
-                returns_semi-annual     # CSV, log return per day of the portfolio
-                returns_annual          # CSV, log return per day of the portfolio
-            markowitz			        # Folder
-                returns_monthly         # CSV, log return per day of the portfolio
-                returns_quarterly       # CSV, log return per day of the portfolio
-                returns_semi-annual     # CSV, log return per day of the portfolio
-                returns_annual          # CSV, log return per day of the portfolio
-            random_forest		        # Folder
-                run_01                  # Folder, for each run, create a new one (10) in total
-                    returns_monthly         # CSV, log return per day of the portfolio
-                    returns_quarterly       # CSV, log return per day of the portfolio
-                    returns_semi-annual     # CSV, log return per day of the portfolio
-                    returns_annual          # CSV, log return per day of the portfolio
-            xgboost			            # Folder
-                run_01                  # Folder, for each run, create a new one (10) in total
-                    returns_monthly         # CSV, log return per day of the portfolio
-                    returns_quarterly       # CSV, log return per day of the portfolio
-                    returns_semi-annual     # CSV, log return per day of the portfolio
-                    returns_annual          # CSV, log return per day of the portfolio
-        data                     # Folder
-            benchmark			        # Folder
-                portfolio               # CSV, columns (date[daily], ticker, price adj close, returns per day) [it is buy&hold]
-            equal_weight			    # Folder
-                portfolio_monthly       # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_quarterly     # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_semi-annual   # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_annual        # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-            hrp				            # Folder
-                portfolio_monthly       # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_quarterly     # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_semi-annual   # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_annual        # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-            lstm				        # Folder
-                statistics              # Folder
-                    statistics_monthly              # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score, best nodes, best dropout, best val loss)
-                    statistics_quarterly            # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score, best nodes, best dropout, best val loss)
-                    statistics_semi-annual          # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score, best nodes, best dropout, best val loss)
-                    statistics_annual               # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score, best nodes, best dropout, best val loss)
-                run_01                  # Folder, for each run, create a new one (10) in total
-                    portfolio_monthly       # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_quarterly     # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_semi-annual   # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_annual        # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-            market_cap			        # Folder
-                portfolio_monthly       # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_quarterly     # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_semi-annual   # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_annual        # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-            markowitz_unconstrained	    # Folder
-                portfolio_monthly       # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_quarterly     # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_semi-annual   # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_annual        # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-            markowitz			        # Folder
-                portfolio_monthly       # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_quarterly     # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_semi-annual   # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                portfolio_annual        # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-            random_forest		        # Folder
-                statistics              # Folder
-                    statistics_monthly              # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score)
-                    statistics_quarterly            # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score)
-                    statistics_semi-annual          # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score)
-                    statistics_annual               # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score)
-                run_01                  # Folder, for each run, create a new one (10) in total
-                    portfolio_monthly       # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_quarterly     # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_semi-annual   # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_annual        # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-            xgboost			            # Folder
-                statistics              # Folder
-                    statistics_monthly              # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score, ADF statistic, ADF p-value)
-                    statistics_quarterly            # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score, ADF statistic, ADF p-value)
-                    statistics_semi-annual          # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score, ADF statistic, ADF p-value)
-                    statistics_annual               # CSV, all statistics per run, labeled with column name for each run to differentiate (RMSE, MSE, MAE, Rsquared, MAPE, Directional Accuracy, Geometric Score, ADF statistic, ADF p-value)
-                run_01                  # Folder, for each run, create a new one (10) in total
-                    portfolio_monthly       # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_quarterly     # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_semi-annual   # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-                    portfolio_annual        # CSV, columns (date[daily], ticker, initial weight of rebalancing, current weight[daily], pct change of stock within that month, weight*pct return this month, portfolio value, turnover)
-        plots                    # Folder with plots created for visualization
-            all_models                      # Folder      
-            benchmark                       # Folder
-            equal_weight                    # Folder
-            hrp                             # Folder
-            lstm                            # Folder
-            market_cap                      # Folder
-            markowitz_unconstrained         # Folder
-            markowitz                       # Folder
-            random_forest                   # Folder
-            xgboost                         # Folder
-    universe
-    benchmark_price.parquet        # Benchmark with its closing prices over all years
-    universe_prices.parquet         # All stocks with all closing prices over all years
-    download_meta.txt
-    .gitignore
-    README.md                       # Documentation
-    requirements.txt
+## Requirements
+
+```
+pandas >= 2.3
+numpy >= 2.2
+plotly >= 6.3
+scipy >= 1.16
+scikit-learn >= 1.7
+xgboost >= 3.0
+tensorflow >= 2.20
+pyarrow >= 21.0
+```
+
+Install all at once:
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## How to Run
+
+### Step 1 — Run the benchmark analysis first
+
+The benchmark portfolio CSV is required by all other analysis scripts.
+
+```bash
+python analysis_code/analyze_benchmark.py
+```
+
+Outputs:
+- `results/data/benchmark/portfolio.csv`
+- `results/metrics/benchmark/metrics_buy_hold.csv`
+- `results/plots/benchmark/benchmark_interactive_report.html`
+
+---
+
+### Step 2 — Build portfolio data (models/)
+
+Each model script reads the raw price data (`universe_prices.parquet`, `benchmark_price.parquet`) and writes portfolio CSVs to `results/data/<model>/`.
+
+Run each script independently — order among them does not matter:
+
+```bash
+python models/equal_weight.py
+python models/market_cap.py
+python models/hrp.py
+python models/markowitz.py
+python models/lstm.py          # runs 5 times by default (run1–run5)
+python models/random_forest.py
+python models/xgboost_model.py
+```
+
+Each script produces one CSV per frequency:
+- `portfolio_<model>_Monthly.csv`
+- `portfolio_<model>_Quarterly.csv`
+- `portfolio_<model>_Yearly.csv`
+
+LSTM, Random Forest, and XGBoost also write `_details.csv`, `_statistics.csv`, and `_feature_importance.csv` per run.
+
+---
+
+### Step 3 — Run the analysis scripts (analysis_code/)
+
+Each analysis script reads from `results/data/<model>/` and the benchmark CSV, then writes metrics CSVs and an HTML report.
+
+```bash
+python analysis_code/analyze_equal_weight.py
+python analysis_code/analyze_market_cap.py
+python analysis_code/analyze_hrp.py
+python analysis_code/analyze_markowitz.py
+python analysis_code/analyze_lstm.py
+python analysis_code/analyze_random_forest.py
+python analysis_code/analyze_xgboost.py
+```
+
+Each script produces:
+- `results/metrics/<model>/metrics_Monthly.csv`
+- `results/metrics/<model>/metrics_Quarterly.csv`
+- `results/metrics/<model>/metrics_Yearly.csv`
+- `results/plots/<model>/report_all_frequencies.html`
+
+---
+
+## Project Structure
+
+```
+Thesis_xyz/
+├── metrics.py                          # Shared metrics, crisis definitions, plot helpers
+├── universe.py                         # Universe construction utilities
+├── universe_prices.parquet             # Daily closing prices for all universe stocks
+├── benchmark_price.parquet             # Daily S&P 500 closing prices
+├── requirements.txt
+│
+├── models/                             # Step 2 — portfolio construction
+│   ├── equal_weight.py
+│   ├── market_cap.py
+│   ├── hrp.py
+│   ├── markowitz.py
+│   ├── lstm.py
+│   ├── random_forest.py
+│   └── xgboost_model.py
+│
+├── analysis_code/                      # Step 3 — metrics + reports
+│   ├── analyze_benchmark.py            # Step 1 — run this first
+│   ├── analyze_equal_weight.py
+│   ├── analyze_market_cap.py
+│   ├── analyze_hrp.py
+│   ├── analyze_markowitz.py
+│   ├── analyze_lstm.py
+│   ├── analyze_random_forest.py
+│   └── analyze_xgboost.py
+│
+└── results/
+    ├── data/                           # Portfolio CSVs (generated by models/)
+    │   ├── benchmark/
+    │   ├── equal_weight/
+    │   ├── market_cap/
+    │   ├── hrp/
+    │   ├── markowitz/
+    │   ├── lstm/
+    │   ├── random_forest/
+    │   └── xgboost/
+    ├── metrics/                        # Metrics CSVs (generated by analysis_code/)
+    │   ├── benchmark/
+    │   ├── equal_weight/
+    │   ├── market_cap/
+    │   ├── hrp/
+    │   ├── markowitz/
+    │   ├── lstm/
+    │   ├── random_forest/
+    │   └── xgboost/
+    └── plots/                          # HTML reports (generated by analysis_code/)
+        ├── benchmark/
+        ├── equal_weight/
+        ├── market_cap/
+        ├── hrp/
+        ├── markowitz/
+        ├── lstm/
+        ├── random_forest/
+        └── xgboost/
+```
+
+---
+
+## Notes
+
+- All analysis scripts import from `metrics.py` in the project root — do not move it.
+- Crisis-period metrics in the CSVs follow different reporting conventions per sub-crisis:
+  - **Early Credit Crunch (ecc)**: single window, start → end
+  - **Acute GFC Crash (agfc)**: split into peak-to-trough and trough-to-recovery
+  - **European Debt Crisis (eu_debt)**: single window, start → end
+  - All other crises: split into peak-to-trough and trough-to-recovery

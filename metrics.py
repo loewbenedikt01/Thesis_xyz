@@ -149,7 +149,7 @@ CRISIS_PERIODS = [
     ('European Debt + US Debt Ceiling', 'eu_debt',  '2010-04-23', '2011-10-03', '2012-03-23'),
     ('Monetary Policy',                 'mon_pol',  '2018-09-21', '2018-12-24', '2019-04-23'),
     ('COVID-19',                        'covid19',  '2020-02-19', '2020-03-23', '2020-08-12'),
-    ('Russia/Ukraine',                  'russia',   '2022-01-03', '2022-10-12', '2024-01-19'),
+    ('Inflation and Rate Hike Cycle',   'russia',   '2022-01-03', '2022-10-12', '2024-01-19'),
     ('Trade Policy Shock',              'trade',    '2025-02-19', '2025-04-08', '2025-06-26'),
 ]
 
@@ -170,6 +170,16 @@ CRISIS_METRIC_LABELS_T2P = [
     ('t2p_sortino',      'Sortino (Trough→Recovery)',       '{:.3f}'),
     ('t2p_ulcer',        'Ulcer Index (Trough→Recovery)',   '{:.4f}'),
     ('t2p_calmar',       'Calmar (Trough→Recovery)',        '{:.3f}'),
+]
+
+# Full-period labels (used for crises reported as a single window, e.g. eu_debt)
+CRISIS_METRIC_LABELS_FULL = [
+    ('full_cum_return',   'Cum Return (Start→End)',    '{:.2%}'),
+    ('full_max_drawdown', 'Max Drawdown (Start→End)',  '{:.2%}'),
+    ('full_sharpe',       'Sharpe (Start→End)',        '{:.3f}'),
+    ('full_sortino',      'Sortino (Start→End)',       '{:.3f}'),
+    ('full_ulcer',        'Ulcer Index (Start→End)',   '{:.4f}'),
+    ('full_calmar',       'Calmar (Start→End)',        '{:.3f}'),
 ]
 
 
@@ -390,7 +400,7 @@ def named_crisis_metrics(log_returns: pd.Series, price_series: pd.Series,
                                                   if mdd != 0 and not np.isnan(mdd)
                                                   else np.nan)
 
-    for _, crisis_key, window_start, defined_trough, _ in CRISIS_PERIODS:
+    for _, crisis_key, window_start, defined_trough, window_end in CRISIS_PERIODS:
         idx = price_series.index
 
         start_hits = idx[idx >= pd.Timestamp(window_start)]
@@ -415,6 +425,13 @@ def named_crisis_metrics(log_returns: pd.Series, price_series: pd.Series,
 
         _phase(crisis_key, 'p2t', p2t_returns, p2t_prices)
         _phase(crisis_key, 't2p', t2p_returns, t2p_prices)
+
+        # eu_debt: also compute a full-period phase (start → window_end)
+        if crisis_key == 'eu_debt':
+            end_hits = idx[idx >= pd.Timestamp(window_end)]
+            actual_end = end_hits[0] if not end_hits.empty else idx[-1]
+            _phase(crisis_key, 'full', log_returns.loc[actual_start:actual_end],
+                   price_series.loc[actual_start:actual_end])
 
     return results
 
@@ -497,8 +514,19 @@ def metrics_to_dataframe(results: dict) -> pd.DataFrame:
 
     crisis_labels = {}
     for crisis_name, crisis_key, _, _, _ in CRISIS_PERIODS:
-        for metric_suffix, metric_label, fmt in CRISIS_METRIC_LABELS_P2T + CRISIS_METRIC_LABELS_T2P:
-            crisis_labels[f'{crisis_key}_{metric_suffix}'] = (crisis_name, metric_label, fmt)
+        if crisis_key == 'ecc':
+            # ecc: trough = end date → report only the single start→end window (p2t phase)
+            for metric_suffix, metric_label, fmt in CRISIS_METRIC_LABELS_P2T:
+                display = metric_label.replace('Peak→Trough', 'Start→End')
+                crisis_labels[f'{crisis_key}_{metric_suffix}'] = (crisis_name, display, fmt)
+        elif crisis_key == 'eu_debt':
+            # eu_debt: report the full start→end window (no p2t/t2p split)
+            for metric_suffix, metric_label, fmt in CRISIS_METRIC_LABELS_FULL:
+                crisis_labels[f'{crisis_key}_{metric_suffix}'] = (crisis_name, metric_label, fmt)
+        else:
+            # all others (including agfc): report both p2t and t2p
+            for metric_suffix, metric_label, fmt in CRISIS_METRIC_LABELS_P2T + CRISIS_METRIC_LABELS_T2P:
+                crisis_labels[f'{crisis_key}_{metric_suffix}'] = (crisis_name, metric_label, fmt)
 
     def _fmt(value, fmt):
         try:
