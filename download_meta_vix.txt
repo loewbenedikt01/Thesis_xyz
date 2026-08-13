@@ -1,0 +1,4 @@
+Downloaded: 2026-08-13 21:54:29.423911
+yfinance version: 0.2.66
+Tickers: ^VIX
+Start: 1990-01-01 | End: 2025-12-31

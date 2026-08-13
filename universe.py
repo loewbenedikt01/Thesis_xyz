@@ -279,6 +279,9 @@ tickers = {
 # Ticker for the benchmark data to be downloaded
 benchmark_ticker = "^GSPC"
 
+# Ticker for the VIX (volatility index) data to be downloaded
+vix_ticker = "^VIX"
+
 
 # Start
 if __name__ == "__main__":
@@ -293,6 +296,8 @@ if __name__ == "__main__":
     meta_file_universe = DATA_PATH / "download_meta_universe.txt"
     benchmark_price_file = DATA_PATH / "benchmark_price.parquet"
     meta_file_benchmark = DATA_PATH / "download_meta_benchmark.txt"
+    vix_price_file = DATA_PATH / "vix_price.parquet"
+    meta_file_vix = DATA_PATH / "download_meta_vix.txt"
 
     if not universe_prices_file.exists():
         print(f"Downloading {len(all_tickers)} tickers from 1990 to 2025...")
@@ -338,6 +343,30 @@ if __name__ == "__main__":
             f.write(f"Start: 1998-01-01 | End: 2025-12-31\n")
 
         print(f"Saved to {benchmark_price_file}")
+    else:
+        print("Data already exists, loading from disk")
+
+    # Download the VIX
+    if not vix_price_file.exists():
+        print(f"Downloading ^VIX from 1990 to 2025...")
+        raw_vix = yf.download(
+            vix_ticker,
+            start = "1990-01-01",
+            end = "2025-12-31",
+            auto_adjust=True,
+            progress=True,
+        )
+
+        prices = raw_vix["Close"]
+        prices.to_parquet(vix_price_file)
+
+        with open(meta_file_vix, "w") as f:
+            f.write(f"Downloaded: {pd.Timestamp.now()}\n")
+            f.write(f"yfinance version: {yf.__version__}\n")
+            f.write(f"Tickers: {vix_ticker}\n")
+            f.write(f"Start: 1990-01-01 | End: 2025-12-31\n")
+
+        print(f"Saved to {vix_price_file}")
     else:
         print("Data already exists, loading from disk")
 
