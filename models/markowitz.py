@@ -30,7 +30,6 @@ import universe
 # ─────────────────────────────────────────────────────────────────────────────
 FREQUENCIES = {
     'Yearly':      pd.DateOffset(years=1),
-    'Semi-Annual': pd.DateOffset(months=6),
     'Quarterly':   pd.DateOffset(months=3),
     'Monthly':     pd.DateOffset(months=1),
 }

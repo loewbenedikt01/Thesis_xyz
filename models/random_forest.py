@@ -31,8 +31,6 @@ TRAIN_MONTHS_MONTHLY     = 5        # training lookback in months
 VAL_MONTHS_MONTHLY       = 2        # must be > 1 horizon (1 mo) to have val samples
 TRAIN_MONTHS_QUARTERLY   = 15       # training lookback in months
 VAL_MONTHS_QUARTERLY     = 6        # must be > 1 horizon (3 mo) to have val samples
-TRAIN_MONTHS_SEMI_ANNUAL = 30       # training lookback in months
-VAL_MONTHS_SEMI_ANNUAL   = 12       # must be > 1 horizon (6 mo) to have val samples
 TRAIN_MONTHS_ANNUAL      = 60       # training lookback in months
 VAL_MONTHS_ANNUAL        = 24       # must be > 1 horizon (12 mo) to have val samples
 MIN_COMPLETENESS = 0.50     # min fraction of non-NaN rows required per ticker
@@ -286,9 +284,6 @@ for label, (offset, horizon) in FREQUENCIES.items():
     elif label == 'Quarterly':
         TRAIN_MONTHS = TRAIN_MONTHS_QUARTERLY
         VAL_MONTHS   = VAL_MONTHS_QUARTERLY
-    elif label == 'Semi-Annual':
-        TRAIN_MONTHS = TRAIN_MONTHS_SEMI_ANNUAL
-        VAL_MONTHS   = VAL_MONTHS_SEMI_ANNUAL
     else:  # Yearly
         TRAIN_MONTHS = TRAIN_MONTHS_ANNUAL
         VAL_MONTHS   = VAL_MONTHS_ANNUAL

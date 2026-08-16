@@ -23,14 +23,13 @@ import universe
 # ─────────────────────────────────────────────────────────────────────────────
 FREQUENCIES = {
     'Yearly':      pd.DateOffset(years=1),
-    'Semi-Annual': pd.DateOffset(months=6),
     'Quarterly':   pd.DateOffset(months=3),
     'Monthly':     pd.DateOffset(months=1),
 }
 
 # FIX 3: Transaction costs — set TC_BPS = 0 to disable
 # Applied as: portfolio_value *= (1 - turnover * TC_BPS / 10_000)
-TC_BPS = 0
+TC_BPS = 50
 
 start_invest = pd.Timestamp("1998-01-01")
 end_invest   = pd.Timestamp("2025-12-31")
@@ -40,7 +39,7 @@ end_invest   = pd.Timestamp("2025-12-31")
 # ─────────────────────────────────────────────────────────────────────────────
 DATA_PATH   = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
 prices_file = DATA_PATH / "universe_prices.parquet"
-output_dir  = DATA_PATH / "results" / "data" / "market_cap"
+output_dir  = DATA_PATH / "results" / "data" / "market_cap_tc"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 all_prices = pd.read_parquet(prices_file)
@@ -134,6 +133,8 @@ for label, offset in FREQUENCIES.items():
 
         # ── FIX 3: Transaction cost at rebalance ──────────────────────────────
         turnover = target_weights.sub(last_end_weights, fill_value=0).abs().sum()
+        prev_value = portfolio_value  # captured BEFORE the TC deduction below,
+                                       # so the cost lands in the next logged return
         if TC_BPS > 0:
             portfolio_value *= (1 - turnover * TC_BPS / 10_000)
 
@@ -170,9 +171,14 @@ for label, offset in FREQUENCIES.items():
 
                 portfolio_performance.append({
                     'date'            : day_ts.strftime('%Y-%m-%d'),
-                    'log_return'      : np.log(1 + day_pct),
+                    # log(value_today / value_yesterday) — NOT log(1 + day_pct):
+                    # on the first day of a rebalance this must also absorb the
+                    # TC drag applied to portfolio_value above, or transaction
+                    # costs silently vanish from every log-return-based metric.
+                    'log_return'      : np.log(portfolio_value / prev_value),
                     'cumulative_value': portfolio_value,
                 })
+                prev_value = portfolio_value
 
         last_end_weights = active_weights
         current_date     = next_rebalance

@@ -50,8 +50,6 @@ TRAIN_MONTHS_MONTHLY     = 5        # training lookback in months
 VAL_MONTHS_MONTHLY       = 2        # must be > 1 horizon (1 mo) to have val samples
 TRAIN_MONTHS_QUARTERLY   = 15       # training lookback in months
 VAL_MONTHS_QUARTERLY     = 6        # must be > 1 horizon (3 mo) to have val samples
-TRAIN_MONTHS_SEMI_ANNUAL = 30       # training lookback in months
-VAL_MONTHS_SEMI_ANNUAL   = 12       # must be > 1 horizon (6 mo) to have val samples
 TRAIN_MONTHS_ANNUAL      = 60       # training lookback in months
 VAL_MONTHS_ANNUAL        = 24       # must be > 1 horizon (12 mo) to have val samples
 MIN_COMPLETENESS = 0.50     # min fraction of non-NaN rows per ticker
@@ -59,7 +57,6 @@ WEIGHT_MAX       = 0.10     # max portfolio weight per stock
 WEIGHT_MIN       = 0.01     # min portfolio weight per stock
 SEQ_LEN_MONTHLY     = 3    # 3 monthly snapshots
 SEQ_LEN_QUARTERLY   = 4    # 4 quarterly snapshots 
-SEQ_LEN_SEMI_ANNUAL = 4    # 4 semi-annual snapshots 
 SEQ_LEN_ANNUAL      = 12   # 12 yearly snapshots 
 
 # FIX 7: Single-run seed design
@@ -277,10 +274,6 @@ for label, (offset, horizon) in FREQUENCIES.items():
         TRAIN_MONTHS = TRAIN_MONTHS_QUARTERLY
         VAL_MONTHS   = VAL_MONTHS_QUARTERLY
         SEQ_LEN      = SEQ_LEN_QUARTERLY
-    elif label == 'Semi-Annual':
-        TRAIN_MONTHS = TRAIN_MONTHS_SEMI_ANNUAL
-        VAL_MONTHS   = VAL_MONTHS_SEMI_ANNUAL
-        SEQ_LEN      = SEQ_LEN_SEMI_ANNUAL
     else:  # Yearly
         TRAIN_MONTHS = TRAIN_MONTHS_ANNUAL
         VAL_MONTHS   = VAL_MONTHS_ANNUAL

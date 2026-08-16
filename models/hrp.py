@@ -30,7 +30,6 @@ import universe
 # ─────────────────────────────────────────────────────────────────────────────
 FREQUENCIES = {
     'Yearly':      pd.DateOffset(years=1),
-    'Semi-Annual': pd.DateOffset(months=6),
     'Quarterly':   pd.DateOffset(months=3),
     'Monthly':     pd.DateOffset(months=1),
 }
@@ -44,7 +43,7 @@ WEIGHT_MIN       = 0.01     # min portfolio weight per stock
 LINKAGE          = 'ward'   # hierarchical clustering linkage method
 
 # Transaction costs — set TC_BPS = 0 to disable
-TC_BPS = 0
+TC_BPS = 50
 
 start_invest = pd.Timestamp("1998-01-01")
 end_invest   = pd.Timestamp("2025-12-31")

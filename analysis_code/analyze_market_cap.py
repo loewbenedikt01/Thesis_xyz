@@ -36,11 +36,11 @@ from metrics import (
 # PATHS
 # ─────────────────────────────────────────────────────────────────────────────
 DATA_PATH          = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
-output_dir_metrics = DATA_PATH / "results" / "metrics" / "market_cap"
-output_dir_plots   = DATA_PATH / "results" / "plots"   / "market_cap"
+output_dir_metrics = DATA_PATH / "results" / "metrics" / "market_cap_tc"
+output_dir_plots   = DATA_PATH / "results" / "plots"   / "market_cap_tc"
 output_dir_metrics.mkdir(parents=True, exist_ok=True)
 output_dir_plots.mkdir(parents=True, exist_ok=True)
-DATA_DIR           = DATA_PATH / "results" / "data" / "market_cap"
+DATA_DIR           = DATA_PATH / "results" / "data" / "market_cap_tc"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SETTINGS
