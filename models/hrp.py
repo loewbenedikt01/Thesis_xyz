@@ -1,17 +1,5 @@
 """
-HRP Portfolio Model — v3
-=========================
-All fixes from v2, plus three new fixes for the NaN weight problem:
-  8.  Ledoit-Wolf shrinkage ('ledoit') replaces sample covariance ('hist')
-      → eliminates near-singular matrix failures during GFC/crisis periods
-  9.  MIN_COMPLETENESS lowered to 0.30 for new-stock rotation periods
-      → prevents entire years being blank when new stocks lack 60mo history
- 10.  Final guard: if target_weights is still None after fallback, skip period
-      → stops NaN rows being written to the details CSV
- 11.  Fallback logs actual carried-forward weights (not new universe tickers)
-      → details CSV now always reflects what the portfolio actually held
- 12.  'hrp_success' flag column added to details CSV
-      → makes it easy to filter fallback periods in post-processing
+HRP Portfolio Model
 """
 
 import pandas as pd
@@ -34,15 +22,11 @@ FREQUENCIES = {
     'Monthly':     pd.DateOffset(months=1),
 }
 
-LOOKBACK_MONTHS  = 60       # lookback window for covariance estimation
-MIN_COMPLETENESS = 0.50     # FIX 9: lowered from 0.50 → 0.30
-                             # 0.50 was dropping new stocks that had < 30mo history
-                             # when the universe rotated, causing entire blank years
-WEIGHT_MAX       = 0.10     # max portfolio weight per stock
-WEIGHT_MIN       = 0.01     # min portfolio weight per stock
-LINKAGE          = 'ward'   # hierarchical clustering linkage method
-
-# Transaction costs — set TC_BPS = 0 to disable
+LOOKBACK_MONTHS  = 60
+MIN_COMPLETENESS = 0.50
+WEIGHT_MAX       = 0.10 
+WEIGHT_MIN       = 0.01
+LINKAGE          = 'ward' 
 TC_BPS = 50
 
 start_invest = pd.Timestamp("1998-01-01")
@@ -51,9 +35,11 @@ end_invest   = pd.Timestamp("2025-12-31")
 # ─────────────────────────────────────────────────────────────────────────────
 # PATHS
 # ─────────────────────────────────────────────────────────────────────────────
+output_name = "portfolio_hrp_"
+DATA_SUFFIX = "_tc"
 DATA_PATH   = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
 prices_file = DATA_PATH / "universe_prices.parquet"
-output_dir  = DATA_PATH / "results" / "data" / "hrp"
+output_dir  = DATA_PATH / "results" / "data" / f"hrp{DATA_SUFFIX}"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 all_prices = pd.read_parquet(prices_file)
@@ -65,11 +51,7 @@ all_prices.index = pd.to_datetime(all_prices.index).tz_localize(None)
 # ─────────────────────────────────────────────────────────────────────────────
 def clip_and_redistribute(weights: pd.Series, w_min: float, w_max: float,
                            max_iter: int = 100) -> pd.Series | None:
-    """
-    Enforce [w_min, w_max] bounds by iteratively clipping and redistributing
-    the excess/deficit proportionally across unconstrained assets.
-    Returns normalised weights summing to 1.0, or None if convergence fails.
-    """
+
     w = weights.copy()
     for _ in range(max_iter):
         clipped_low  = w < w_min
@@ -94,17 +76,11 @@ def clip_and_redistribute(weights: pd.Series, w_min: float, w_max: float,
 # HRP OPTIMISATION
 # ─────────────────────────────────────────────────────────────────────────────
 def hrp_weights(returns_df: pd.DataFrame) -> pd.Series | None:
-    """
-    Compute HRP weights via riskfolio-lib using Ledoit-Wolf shrinkage.
-    Ledoit-Wolf ('ledoit') is far more robust than sample covariance ('hist')
-    for near-singular matrices during high-correlation crisis periods (GFC etc.)
-    Returns a pd.Series of weights (indexed by ticker) or None on failure.
-    """
     port = rp.HCPortfolio(returns=returns_df)
     w = port.optimization(
         model        = 'HRP',
         codependence = 'pearson',
-        method_cov   = 'ledoit',    # FIX 8: Ledoit-Wolf shrinkage
+        method_cov   = 'ledoit',
         linkage      = LINKAGE,
         rm           = 'MV',
         rf           = 0,
@@ -158,7 +134,6 @@ for label, offset in FREQUENCIES.items():
             current_date = next_rebalance
             continue
 
-        # Completeness filter (FIX 9: threshold = 0.30)
         coverage      = lb_prices.notnull().sum() / len(lb_prices)
         valid_tickers = coverage[coverage >= MIN_COMPLETENESS].index.tolist()
 
@@ -166,11 +141,9 @@ for label, offset in FREQUENCIES.items():
             current_date = next_rebalance
             continue
 
-        # Cap ffill at 5 days; drop rows where ALL stocks are NaN
         lb_prices_final = lb_prices[valid_tickers].ffill(limit=5).dropna(how='all')
         valid_tickers   = lb_prices_final.columns.tolist()
 
-        # Remove stocks with no price on the actual trade date
         valid_tickers = [
             t for t in valid_tickers
             if t in all_prices.columns
@@ -183,6 +156,18 @@ for label, offset in FREQUENCIES.items():
 
         lb_prices_final = lb_prices_final[valid_tickers]
         lb_returns      = lb_prices_final.pct_change().dropna(how='all')
+
+        still_bad = lb_returns.columns[lb_returns.isna().any()].tolist()
+        if still_bad:
+            lb_returns    = lb_returns.drop(columns=still_bad)
+            valid_tickers = [t for t in valid_tickers if t not in still_bad]
+            print(f"  [{label}] {current_date.date()}: excluding {still_bad} "
+                  f"(residual NaN in lookback, likely newly listed) — "
+                  f"HRP proceeds on {len(valid_tickers)} stocks")
+
+        if len(valid_tickers) < 2:
+            current_date = next_rebalance
+            continue
 
         # ── HRP Optimisation ──────────────────────────────────────────────────
         target_weights = None
@@ -211,23 +196,17 @@ for label, offset in FREQUENCIES.items():
             print(f"  [{label}] {current_date.date()}: "
                   f"equal-weight fallback ({n} stocks)")
 
-        # FIX 10: final safety guard — should never trigger but prevents
-        # any edge case where target_weights is still None or empty
         if target_weights is None or target_weights.empty:
             current_date = next_rebalance
             continue
 
         # ── Transaction cost at rebalance ─────────────────────────────────────
         turnover = target_weights.sub(last_end_weights, fill_value=0).abs().sum()
-        prev_value = portfolio_value  # captured BEFORE the TC deduction below,
-                                       # so the cost lands in the next logged return
+        prev_value = portfolio_value
         if TC_BPS > 0:
             portfolio_value *= (1 - turnover * TC_BPS / 10_000)
 
         # ── Rebalance logging ─────────────────────────────────────────────────
-        # FIX 11: always log target_weights (what portfolio actually holds)
-        #         never logs NaN — fallback weights are always valid here
-        # FIX 12: 'hrp_success' flag distinguishes HRP vs equal-weight periods
         for ticker, w in target_weights.items():
             rebalance_details.append({
                 'rebalance_date'  : actual_trade_date.strftime('%Y-%m-%d'),
@@ -235,7 +214,7 @@ for label, offset in FREQUENCIES.items():
                 'select_year'     : select_year,
                 'ticker'          : ticker,
                 'assigned_weight' : w,
-                'hrp_success'     : hrp_success,    # FIX 12: True = HRP ran OK
+                'hrp_success'     : hrp_success,
                 'turnover'        : round(turnover, 6) if ticker == target_weights.index[0] else 0,
                 'tc_drag_bps'     : round(turnover * TC_BPS, 4) if ticker == target_weights.index[0] else 0,
             })
@@ -263,10 +242,6 @@ for label, offset in FREQUENCIES.items():
 
             portfolio_performance.append({
                 'date'            : day_ts.strftime('%Y-%m-%d'),
-                # log(value_today / value_yesterday) — NOT log(1 + day_pct):
-                # on the first day of a rebalance this must also absorb the
-                # TC drag applied to portfolio_value above, or transaction
-                # costs silently vanish from every log-return-based metric.
                 'log_return'      : np.log(portfolio_value / prev_value),
                 'cumulative_value': portfolio_value,
             })
@@ -277,10 +252,10 @@ for label, offset in FREQUENCIES.items():
 
     # ── Export ────────────────────────────────────────────────────────────────
     pd.DataFrame(portfolio_performance).to_csv(
-        output_dir / f"portfolio_hrp_{label}.csv", index=False
+        output_dir / f"{output_name}{DATA_SUFFIX}_{label}.csv", index=False
     )
     pd.DataFrame(rebalance_details).to_csv(
-        output_dir / f"portfolio_hrp_{label}_details.csv", index=False
+        output_dir / f"{output_name}{DATA_SUFFIX}_{label}_details.csv", index=False
     )
     print(f"  [{label}] Done — saved to {output_dir}")
 

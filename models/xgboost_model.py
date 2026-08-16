@@ -1,27 +1,5 @@
 """
-XGBoost Portfolio Model — v2
-==============================
-Key improvements vs original:
-  1.  best_params / best_val_r2 initialised at top of every loop iteration
-      → no NameError on fallback path
-  2.  Forward-return target uses date-based lookup (not iloc)
-      → immune to price gaps and halted stocks
-  3.  Transaction costs: optional TC_BPS param (0 = disabled)
-  4.  Validation window = 24 months (matches RF v3)
-  5.  ffill capped at 5 days
-  6.  Universe logic: tickers[year-1] used to invest in year `year`
-  7.  GridSearchCV replaced with manual holdout-based tuning
-      → GridSearchCV uses k-fold CV which breaks temporal ordering;
-         we instead evaluate every combo on the true holdout val set,
-         exactly mirroring what RF v3 does
-  8.  Seed ensemble: 10 seeds averaged into one prediction per period
-      (was: 10 separate independent runs → now: one averaged output)
-  9.  Huber loss objective added ('reg:pseudohubererror')
-      → better than MSE for fat-tailed financial returns (from paper)
- 10.  subsample + colsample_bytree added to grid
-      → XGBoost-specific regularisation the paper's GBRT equivalent uses
- 11.  early_stopping_rounds added during final fit on train+val
-      → prevents overfitting the combined dataset
+XGBoost Portfolio Model
 """
 
 import pandas as pd
@@ -40,37 +18,32 @@ import universe
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
-TRAIN_MONTHS_MONTHLY     = 5        # training lookback in months
-VAL_MONTHS_MONTHLY       = 2        # must be > 1 horizon (1 mo) to have val samples
-TRAIN_MONTHS_QUARTERLY   = 15       # training lookback in months
-VAL_MONTHS_QUARTERLY     = 6        # must be > 1 horizon (3 mo) to have val samples
-TRAIN_MONTHS_ANNUAL      = 60       # training lookback in months
-VAL_MONTHS_ANNUAL        = 24       # must be > 1 horizon (12 mo) to have val samples
-MIN_COMPLETENESS = 0.50     # min fraction of non-NaN rows per ticker
-WEIGHT_MAX       = 0.10     # max portfolio weight per stock
-WEIGHT_MIN       = 0.01     # min portfolio weight per stock
-N_SEEDS          = 5       # seeds averaged into one ensemble prediction
-BASE_SEED        = 41       # seeds: 41, 42, …, 50
+TRAIN_MONTHS_MONTHLY     = 5
+VAL_MONTHS_MONTHLY       = 2
+TRAIN_MONTHS_QUARTERLY   = 15
+VAL_MONTHS_QUARTERLY     = 6
+TRAIN_MONTHS_ANNUAL      = 60
+VAL_MONTHS_ANNUAL        = 24
+MIN_COMPLETENESS = 0.50
+WEIGHT_MAX       = 0.10
+WEIGHT_MIN       = 0.01 
+N_SEEDS          = 5
+BASE_SEED        = 41
+TC_BPS = 50
 
-# Transaction costs — set TC_BPS = 0 to disable
-# Applied as: portfolio_value *= (1 - turnover * TC_BPS / 10_000)
-TC_BPS = 0
-
-# Early stopping: stop boosting if val loss doesn't improve for N rounds
 EARLY_STOPPING_ROUNDS = 10
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HYPERPARAMETER GRID 432 combos
-# 432 grid
 # ─────────────────────────────────────────────────────────────────────────────
 PARAM_GRID = {
-    'learning_rate'     : [0.005, 0.01, 0.05],          # step shrinkage (ν in paper)
-    'max_depth'         : [1, 2, 5, 10],                  # shallow = regularised
+    'learning_rate'     : [0.005, 0.01, 0.05],
+    'max_depth'         : [1, 2, 5, 10],
     'min_child_weight'  : [1, 3, 5, 10],
-    'n_estimators'      : [100, 200, 300],            # boosting rounds (B in paper)
+    'n_estimators'      : [100, 200, 300],
     'gamma'             : [0.001, 0.005, 0.01],
-    'subsample'         : [1.0],                 # row sampling per tree
-    'colsample_bytree'  : [1.0],                 # feature sampling per tree
+    'subsample'         : [1.0],
+    'colsample_bytree'  : [1.0],
     
 }
 
@@ -86,11 +59,12 @@ end_invest   = pd.Timestamp("2025-12-31")
 # ─────────────────────────────────────────────────────────────────────────────
 # PATHS
 # ─────────────────────────────────────────────────────────────────────────────
-#DATA_PATH   = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
+output_name = "portfolio_xgb_" 
+DATA_SUFFIX = "_tc"
 script_dir = Path(__file__).resolve().parent
 DATA_PATH   = script_dir.parent
 prices_file = DATA_PATH / "universe_prices.parquet"
-output_dir  = DATA_PATH / "results" / "data" / "xgboost"
+output_dir  = DATA_PATH / "results" / "data" / f"xgboost{DATA_SUFFIX}"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 all_prices = pd.read_parquet(prices_file)
@@ -100,7 +74,7 @@ SEEDS = [BASE_SEED + i for i in range(N_SEEDS)]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# FEATURE ENGINEERING  (identical to RF v3)
+# FEATURE ENGINEERING
 # ─────────────────────────────────────────────────────────────────────────────
 def create_features(prices_df: pd.DataFrame) -> pd.DataFrame:
     if len(prices_df) < 260:
@@ -147,9 +121,8 @@ def create_features(prices_df: pd.DataFrame) -> pd.DataFrame:
     features = features.rank(pct=True)
     return features.dropna()
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# FIX 2: DATE-BASED FORWARD RETURN  (identical to RF v3)
+# FIX 2: DATE-BASED FORWARD RETURN
 # ─────────────────────────────────────────────────────────────────────────────
 def forward_return(prices_df: pd.DataFrame, anchor_iloc: int,
                    horizon_days: int) -> pd.Series:
@@ -160,9 +133,8 @@ def forward_return(prices_df: pd.DataFrame, anchor_iloc: int,
         return pd.Series(dtype=float)
     return (prices_df.iloc[future_iloc] / prices_df.iloc[anchor_iloc] - 1).dropna()
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# WEIGHT ALLOCATION  (identical to RF v3)
+# WEIGHT ALLOCATION
 # ─────────────────────────────────────────────────────────────────────────────
 def allocate_weights(predictions: pd.Series, w_min: float,
                      w_max: float) -> pd.Series:
@@ -175,7 +147,6 @@ def allocate_weights(predictions: pd.Series, w_min: float,
             break
     return weights
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # GRID HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -183,9 +154,8 @@ def build_param_combinations(grid: dict) -> list:
     keys, values = list(grid.keys()), list(grid.values())
     return [dict(zip(keys, combo)) for combo in product(*values)]
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# TUNE + ENSEMBLE PREDICT  (XGBoost version of RF v3's tune_and_predict)
+# TUNE + ENSEMBLE PREDICT
 # ─────────────────────────────────────────────────────────────────────────────
 def tune_and_predict(X_train_list, y_train_list,
                      X_val_list,   y_val_list,
@@ -193,12 +163,6 @@ def tune_and_predict(X_train_list, y_train_list,
                      param_grid:   dict,
                      seeds:        list,
                      early_stopping_rounds: int = 10):
-    """
-    1. Evaluate all param combos on the TRUE holdout val set (seed-averaged).
-       This preserves temporal ordering — no k-fold CV across time.
-    2. Retrain best combo on train + val with early stopping.
-    3. Return seed-averaged predictions on current_feat.
-    """
     X_train = pd.concat(X_train_list)
     y_train = pd.concat(y_train_list)
     X_val   = pd.concat(X_val_list)
@@ -208,14 +172,14 @@ def tune_and_predict(X_train_list, y_train_list,
 
     param_combos = build_param_combinations(param_grid)
     best_val_r2  = -np.inf
-    best_params  = param_combos[0]           # safe default
+    best_params  = param_combos[0]
 
     # ── Step 1: grid search on holdout val set ────────────────────────────────
     for params in param_combos:
         seed_preds = []
         for seed in seeds:
             m = XGBRegressor(
-                objective         = 'reg:pseudohubererror',  # FIX 9: Huber loss
+                objective         = 'reg:pseudohubererror',
                 n_jobs            = -1,
                 random_state      = seed,
                 verbosity         = 0,
@@ -240,8 +204,6 @@ def tune_and_predict(X_train_list, y_train_list,
             best_params = params
 
     # ── Step 2: retrain best config on train+val, with early stopping ─────────
-    # Use last 20% of training data as internal early-stopping monitor
-    # (this is separate from, and inside, the already-held-out test period)
     n_es_val  = max(1, int(len(X_all) * 0.20))
     X_es_tr   = X_all.iloc[:-n_es_val]
     y_es_tr   = y_all.iloc[:-n_es_val]
@@ -283,7 +245,6 @@ def tune_and_predict(X_train_list, y_train_list,
 
     return pred_series, best_params, best_val_r2, mean_fi, feat_names
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN BACKTEST LOOP
 # ─────────────────────────────────────────────────────────────────────────────
@@ -323,13 +284,10 @@ for label, (offset, horizon) in FREQUENCIES.items():
             break
         actual_trade_date = valid_days[0]
 
-        # FIX 1: always initialise before any conditional block
         target_weights = None
         pred_series    = None
         best_params    = {}
         best_val_r2    = np.nan
-
-        # FIX 6: universe logic — invest_year uses tickers[invest_year - 1]
         invest_year = current_date.year
         select_year = invest_year - 1
 
@@ -349,7 +307,6 @@ for label, (offset, horizon) in FREQUENCIES.items():
                 valid_tickers = coverage[coverage >= MIN_COMPLETENESS].index.tolist()
 
                 if len(valid_tickers) >= 2:
-                    # FIX 5: cap ffill at 5 days
                     train_prices   = hist_prices[valid_tickers].ffill(limit=5)
                     val_start_date   = actual_trade_date - pd.DateOffset(months=VAL_MONTHS)
                     train_start_date = actual_trade_date - pd.DateOffset(months=TRAIN_MONTHS + VAL_MONTHS)
@@ -364,7 +321,6 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         feat    = create_features(train_prices.iloc[:i])
                         if feat.empty:
                             continue
-                        # FIX 2: date-based forward return
                         fwd_ret = forward_return(train_prices, i, horizon)
                         if fwd_ret.empty:
                             continue
@@ -375,7 +331,7 @@ for label, (offset, horizon) in FREQUENCIES.items():
                         X_train_list.append(feat.loc[common])
                         y_train_list.append(y_ranked)
 
-                    # Validation samples (true holdout — never used in grid search)
+                    # Validation samples
                     for i in range(val_split, len(train_prices) - horizon, 21):
                         feat    = create_features(train_prices.iloc[:i])
                         if feat.empty:
@@ -441,8 +397,9 @@ for label, (offset, horizon) in FREQUENCIES.items():
                 print(f"  [{label}] {current_date.date()}: "
                       f"fallback — equal-weight {len(fb_tickers)} tickers.")
 
-        # ── FIX 3: transaction cost ───────────────────────────────────────────
+        # ── transaction cost ───────────────────────────────────────────
         turnover = target_weights.sub(last_end_weights, fill_value=0).abs().sum()
+        prev_value = portfolio_value
         if TC_BPS > 0:
             portfolio_value *= (1 - turnover * TC_BPS / 10_000)
 
@@ -486,9 +443,10 @@ for label, (offset, horizon) in FREQUENCIES.items():
 
                 portfolio_performance.append({
                     'date'            : day_ts.strftime('%Y-%m-%d'),
-                    'log_return'      : np.log(1 + day_pct),
+                    'log_return'      : np.log(portfolio_value / prev_value),
                     'cumulative_value': portfolio_value,
                 })
+                prev_value = portfolio_value
 
             # ── Out-of-sample model evaluation ───────────────────────────────
             hold_prices = period_prices.loc[actual_trade_date:]
@@ -558,15 +516,11 @@ for label, (offset, horizon) in FREQUENCIES.items():
 
     # ── Export ────────────────────────────────────────────────────────────────
     pd.DataFrame(portfolio_performance).to_csv(
-        output_dir / f"portfolio_xgb_{label}.csv", index=False
-    )
+        output_dir / f"{output_name}{DATA_SUFFIX}_{label}.csv", index=False)
     pd.DataFrame(rebalance_details).to_csv(
-        output_dir / f"portfolio_xgb_{label}_details.csv", index=False
-    )
+        output_dir / f"{output_name}{DATA_SUFFIX}_{label}_details.csv", index=False)
     pd.DataFrame(model_stats).to_csv(
-        output_dir / f"portfolio_xgb_{label}_statistics.csv", index=False
-    )
+        output_dir / f"{output_name}{DATA_SUFFIX}_{label}_statistics.csv", index=False)
     pd.DataFrame(feature_importance_records).to_csv(
-        output_dir / f"portfolio_xgb_{label}_feature_importance.csv", index=False
-    )
+        output_dir / f"{output_name}{DATA_SUFFIX}_{label}_feature_importance.csv", index=False)
     print(f"\n  [{label}] Done — saved to {output_dir}")

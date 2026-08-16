@@ -135,10 +135,10 @@ for label, offset in FREQUENCIES.items():
 
     # ── Export ────────────────────────────────────────────────────────────────
     pd.DataFrame(portfolio_performance).to_csv(
-        output_dir / f"{output_name}{DATA_SUFFIX}{label}.csv", index=False
+        output_dir / f"{output_name}{DATA_SUFFIX}_{label}.csv", index=False
     )
     pd.DataFrame(rebalance_details).to_csv(
-        output_dir / f"{output_name}{DATA_SUFFIX}{label}_details.csv", index=False
+        output_dir / f"{output_name}{DATA_SUFFIX}_{label}_details.csv", index=False
     )
     print(f"  [{label}] Done — saved to {output_dir}")
 

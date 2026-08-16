@@ -29,6 +29,7 @@ end_invest   = pd.Timestamp("2025-12-31")
 # ─────────────────────────────────────────────────────────────────────────────
 # PATHS
 # ─────────────────────────────────────────────────────────────────────────────
+output_name = "portfolio_mktcap_"
 DATA_SUFFIX = "_tc"
 DATA_PATH   = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
 prices_file = DATA_PATH / "universe_prices.parquet"
@@ -163,10 +164,10 @@ for label, offset in FREQUENCIES.items():
 
     # ── Export ────────────────────────────────────────────────────────────────
     pd.DataFrame(portfolio_performance).to_csv(
-        output_dir / f"portfolio_mktcap_{label}.csv", index=False
+        output_dir / f"{output_name}{DATA_SUFFIX}_{label}.csv", index=False
     )
     pd.DataFrame(rebalance_details).to_csv(
-        output_dir / f"portfolio_mktcap_{label}_details.csv", index=False
+        output_dir / f"{output_name}{DATA_SUFFIX}_{label}_details.csv", index=False
     )
     print(f"  [{label}] Done — saved to {output_dir}")
 
