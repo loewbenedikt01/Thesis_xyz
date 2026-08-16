@@ -219,6 +219,8 @@ for label, offset in FREQUENCIES.items():
 
         # ── Transaction cost at rebalance ─────────────────────────────────────
         turnover = target_weights.sub(last_end_weights, fill_value=0).abs().sum()
+        prev_value = portfolio_value  # captured BEFORE the TC deduction below,
+                                       # so the cost lands in the next logged return
         if TC_BPS > 0:
             portfolio_value *= (1 - turnover * TC_BPS / 10_000)
 
@@ -261,9 +263,14 @@ for label, offset in FREQUENCIES.items():
 
             portfolio_performance.append({
                 'date'            : day_ts.strftime('%Y-%m-%d'),
-                'log_return'      : np.log(1 + day_pct),
+                # log(value_today / value_yesterday) — NOT log(1 + day_pct):
+                # on the first day of a rebalance this must also absorb the
+                # TC drag applied to portfolio_value above, or transaction
+                # costs silently vanish from every log-return-based metric.
+                'log_return'      : np.log(portfolio_value / prev_value),
                 'cumulative_value': portfolio_value,
             })
+            prev_value = portfolio_value
 
         last_end_weights = active_weights
         current_date     = next_rebalance

@@ -1,11 +1,6 @@
 """
 Market-Cap Weighted Portfolio — v2
 ====================================
-Fixes vs original:
-  1.  current_date + offset (not +=) — safe with all DateOffset types
-  2.  invest_year / select_year added to rebalance_details CSV
-  3.  TC_BPS transaction cost parameter added (0 = disabled)
-  4.  Comment added explaining year_start_trade_date fallback behaviour
 """
 
 import pandas as pd
@@ -27,8 +22,6 @@ FREQUENCIES = {
     'Monthly':     pd.DateOffset(months=1),
 }
 
-# FIX 3: Transaction costs — set TC_BPS = 0 to disable
-# Applied as: portfolio_value *= (1 - turnover * TC_BPS / 10_000)
 TC_BPS = 50
 
 start_invest = pd.Timestamp("1998-01-01")
@@ -37,14 +30,14 @@ end_invest   = pd.Timestamp("2025-12-31")
 # ─────────────────────────────────────────────────────────────────────────────
 # PATHS
 # ─────────────────────────────────────────────────────────────────────────────
+DATA_SUFFIX = "tc_"
 DATA_PATH   = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
 prices_file = DATA_PATH / "universe_prices.parquet"
-output_dir  = DATA_PATH / "results" / "data" / "market_cap_tc"
+output_dir  = DATA_PATH / "results" / "data" / f"market_cap_{DATA_SUFFIX}"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 all_prices = pd.read_parquet(prices_file)
 all_prices.index = pd.to_datetime(all_prices.index).tz_localize(None)
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN LOOP
@@ -59,15 +52,14 @@ for label, offset in FREQUENCIES.items():
     rebalance_details     = []
 
     while current_date < end_invest:
-        # FIX 1: always use + not += with DateOffset
         next_rebalance = current_date + offset
 
         # ── Universe selection ────────────────────────────────────────────────
         invest_year = current_date.year
-        select_year = invest_year - 1       # tickers[1997] → invest in 1998, etc.
+        select_year = invest_year - 1
 
         if select_year not in universe.tickers:
-            current_date = next_rebalance   # FIX 1
+            current_date = next_rebalance
             continue
 
         year_tickers = [t[0] for t in universe.tickers[select_year]]
@@ -80,13 +72,6 @@ for label, offset in FREQUENCIES.items():
             continue
         actual_trade_date = trading_days_ahead[0]
 
-        # ── Year-start reference price for market cap updating ────────────────
-        # All rebalances within the same calendar year use the same year_start
-        # reference so that updated_mktcap = initial_mktcap × (price_now / price_jan1)
-        # consistently reflects price appreciation since the snapshot date.
-        # Note: if a stock has no price on year_start_trade_date (e.g. newly listed),
-        # we fall back to the raw initial_mktcap from the universe snapshot — this is
-        # conservative and documented in the methodology.
         year_start            = pd.Timestamp(f"{current_date.year}-01-01")
         year_start_days       = all_prices.index[all_prices.index >= year_start]
         if year_start_days.empty:
@@ -119,7 +104,6 @@ for label, offset in FREQUENCIES.items():
             price_now = all_prices.at[actual_trade_date, ticker]
 
             if pd.isna(price_start) or pd.isna(price_now) or price_start == 0:
-                # Fallback: use raw snapshot mktcap — conservative and documented
                 updated_mktcaps[ticker] = initial_mc
             else:
                 updated_mktcaps[ticker] = initial_mc * (price_now / price_start)
@@ -133,8 +117,7 @@ for label, offset in FREQUENCIES.items():
 
         # ── FIX 3: Transaction cost at rebalance ──────────────────────────────
         turnover = target_weights.sub(last_end_weights, fill_value=0).abs().sum()
-        prev_value = portfolio_value  # captured BEFORE the TC deduction below,
-                                       # so the cost lands in the next logged return
+        prev_value = portfolio_value
         if TC_BPS > 0:
             portfolio_value *= (1 - turnover * TC_BPS / 10_000)
 
@@ -142,8 +125,8 @@ for label, offset in FREQUENCIES.items():
         for ticker, w in target_weights.items():
             rebalance_details.append({
                 'rebalance_date'     : actual_trade_date.strftime('%Y-%m-%d'),
-                'invest_year'        : invest_year,     # FIX 2
-                'select_year'        : select_year,     # FIX 2
+                'invest_year'        : invest_year,
+                'select_year'        : select_year,
                 'ticker'             : ticker,
                 'assigned_weight'    : w,
                 'updated_mktcap_bn'  : updated_mktcaps[ticker],
@@ -171,10 +154,6 @@ for label, offset in FREQUENCIES.items():
 
                 portfolio_performance.append({
                     'date'            : day_ts.strftime('%Y-%m-%d'),
-                    # log(value_today / value_yesterday) — NOT log(1 + day_pct):
-                    # on the first day of a rebalance this must also absorb the
-                    # TC drag applied to portfolio_value above, or transaction
-                    # costs silently vanish from every log-return-based metric.
                     'log_return'      : np.log(portfolio_value / prev_value),
                     'cumulative_value': portfolio_value,
                 })
