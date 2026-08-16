@@ -1,13 +1,5 @@
 """
-Equal-Weight Portfolio — v2
-=============================
-Fixes vs original:
-  1.  current_date += offset replaced with current_date + offset everywhere
-  2.  rebalance_date logs actual_trade_date (not current_date)
-  3.  period_prices window uses actual_trade_date (not current_date)
-  4.  invest_year / select_year added to rebalance_details CSV
-  5.  TC_BPS transaction cost parameter added (0 = disabled)
-  6.  Column name standardised: turnover_at_rebalance → turnover + tc_drag_bps
+Equal-Weight Portfolio
 """
 
 import pandas as pd
@@ -29,9 +21,7 @@ FREQUENCIES = {
     'Monthly':     pd.DateOffset(months=1),
 }
 
-# FIX 5: Transaction costs — set TC_BPS = 0 to disable
-# Applied as: portfolio_value *= (1 - turnover * TC_BPS / 10_000)
-TC_BPS = 0
+TC_BPS = 50
 
 start_invest = pd.Timestamp("1998-01-01")
 end_invest   = pd.Timestamp("2025-12-31")
@@ -39,14 +29,15 @@ end_invest   = pd.Timestamp("2025-12-31")
 # ─────────────────────────────────────────────────────────────────────────────
 # PATHS
 # ─────────────────────────────────────────────────────────────────────────────
+output_name = "portfolio_ew_"
+DATA_SUFFIX = "_tc"
 DATA_PATH   = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
 prices_file = DATA_PATH / "universe_prices.parquet"
-output_dir  = DATA_PATH / "results" / "data" / "equal_weight"
+output_dir  = DATA_PATH / "results" / "data" / f"equal_weight{DATA_SUFFIX}"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 all_prices = pd.read_parquet(prices_file)
 all_prices.index = pd.to_datetime(all_prices.index).tz_localize(None)
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN LOOP
@@ -61,15 +52,14 @@ for label, offset in FREQUENCIES.items():
     rebalance_details     = []
 
     while current_date < end_invest:
-        # FIX 1: always use + not += with DateOffset
         next_rebalance = current_date + offset
 
         # ── Universe selection ────────────────────────────────────────────────
         invest_year = current_date.year
-        select_year = invest_year - 1       # tickers[1997] → invest in 1998, etc.
+        select_year = invest_year - 1 
 
         if select_year not in universe.tickers:
-            current_date = next_rebalance   # FIX 1
+            current_date = next_rebalance
             continue
 
         year_tickers      = [t[0] for t in universe.tickers[select_year]]
@@ -78,11 +68,10 @@ for label, offset in FREQUENCIES.items():
         # ── Actual trade date ─────────────────────────────────────────────────
         trading_days_ahead = all_prices.index[all_prices.index >= current_date]
         if trading_days_ahead.empty:
-            current_date = next_rebalance   # FIX 1
+            current_date = next_rebalance
             continue
         actual_trade_date = trading_days_ahead[0]
 
-        # Drop tickers with no price on the actual trade date
         valid_tickers = [
             t for t in available_tickers
             if not pd.isna(all_prices.at[actual_trade_date, t])
@@ -104,10 +93,9 @@ for label, offset in FREQUENCIES.items():
         # ── Rebalance logging ─────────────────────────────────────────────────
         for ticker, w in target_weights.items():
             rebalance_details.append({
-                # FIX 2: log actual_trade_date not current_date
                 'rebalance_date'  : actual_trade_date.strftime('%Y-%m-%d'),
-                'invest_year'     : invest_year,        # FIX 4
-                'select_year'     : select_year,        # FIX 4
+                'invest_year'     : invest_year, 
+                'select_year'     : select_year,    
                 'ticker'          : ticker,
                 'assigned_weight' : w,
                 'n_stocks'        : n_assets,
@@ -117,8 +105,6 @@ for label, offset in FREQUENCIES.items():
 
         # ── Daily portfolio drift ─────────────────────────────────────────────
         active_weights = target_weights.copy()
-
-        # FIX 3: use actual_trade_date for period prices window
         period_prices = all_prices.loc[
             actual_trade_date - pd.Timedelta(days=5)
             : next_rebalance   - pd.Timedelta(days=1),
@@ -149,10 +135,10 @@ for label, offset in FREQUENCIES.items():
 
     # ── Export ────────────────────────────────────────────────────────────────
     pd.DataFrame(portfolio_performance).to_csv(
-        output_dir / f"portfolio_ew_{label}.csv", index=False
+        output_dir / f"{output_name}{DATA_SUFFIX}{label}.csv", index=False
     )
     pd.DataFrame(rebalance_details).to_csv(
-        output_dir / f"portfolio_ew_{label}_details.csv", index=False
+        output_dir / f"{output_name}{DATA_SUFFIX}{label}_details.csv", index=False
     )
     print(f"  [{label}] Done — saved to {output_dir}")
 

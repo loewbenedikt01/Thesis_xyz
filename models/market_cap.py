@@ -1,6 +1,5 @@
 """
-Market-Cap Weighted Portfolio — v2
-====================================
+Market-Cap Weighted Portfolio
 """
 
 import pandas as pd
@@ -30,10 +29,10 @@ end_invest   = pd.Timestamp("2025-12-31")
 # ─────────────────────────────────────────────────────────────────────────────
 # PATHS
 # ─────────────────────────────────────────────────────────────────────────────
-DATA_SUFFIX = "tc_"
+DATA_SUFFIX = "_tc"
 DATA_PATH   = Path(r"C:\Users\benel\OneDrive\Desktop\Python\Thesis_xyz")
 prices_file = DATA_PATH / "universe_prices.parquet"
-output_dir  = DATA_PATH / "results" / "data" / f"market_cap_{DATA_SUFFIX}"
+output_dir  = DATA_PATH / "results" / "data" / f"market_cap{DATA_SUFFIX}"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 all_prices = pd.read_parquet(prices_file)
